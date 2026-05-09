@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JodWai.Api/JodWai.Api.csproj" />
+    <Project Path="src/JodWai.Application/JodWai.Application.csproj" />
+    <Project Path="src/JodWai.Domain/JodWai.Domain.csproj" />
+    <Project Path="src/JodWai.Infrastructure/JodWai.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Project Path="JodWai.AppHost/JodWai.AppHost.csproj" />
+  <Project Path="JodWai.ServiceDefaults/JodWai.ServiceDefaults.csproj" />
+</Solution>
