@@ -5,21 +5,21 @@ public sealed record NoteContent
     public const int MaxLength = 10000;
     public string Value { get; }
 
-    public NoteContent(string value)
+    private NoteContent(string value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException(
-                "Note content cannot be empty.");
-        }
-
-        if (value.Length > MaxLength)
-        {
-            throw new ArgumentException(
-                "Note content is too long.");
-        }
-
         Value = value;
+    }
+
+    public static NoteContent From(string value)
+    {
+        string settledValue = value ?? string.Empty;
+
+        if (settledValue.Length > MaxLength)
+        {
+            throw new ArgumentException("Note content is too long.");
+        }
+
+        return new NoteContent(settledValue);
     }
 
     public override string ToString() => Value;
