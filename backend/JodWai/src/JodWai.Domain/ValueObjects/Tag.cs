@@ -23,7 +23,7 @@ public sealed record Tag
         if (value.Length > MaxLength)
         {
             throw new ArgumentException(
-                "Tag cannot exceed {MaxLength} characters.");
+                $"Tag cannot exceed {MaxLength} characters.");
         }
 
         return new Tag(value);
