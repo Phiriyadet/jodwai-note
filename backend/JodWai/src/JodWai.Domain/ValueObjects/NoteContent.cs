@@ -12,7 +12,7 @@ public sealed record NoteContent
 
     public static NoteContent From(string value)
     {
-        string settledValue = value ?? string.Empty;
+        string settledValue = (value ?? string.Empty).Trim();
 
         if (settledValue.Length > MaxLength)
         {
