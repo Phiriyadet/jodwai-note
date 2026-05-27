@@ -92,6 +92,6 @@ public class Note
     }
 
     public void AddTag(Tag tag) => _tags.Add(tag);
-    public void RemoveTag(Tag tag) => _tags.RemoveAll(x => x.Value == tag.Value);
+    public void RemoveTag(Tag tag) => _tags.Remove(tag);
 
 }
