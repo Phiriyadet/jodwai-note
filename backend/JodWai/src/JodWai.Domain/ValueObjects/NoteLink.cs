@@ -2,36 +2,23 @@ using JodWai.Domain.ValueObjects;
 
 public sealed record NoteLink
 {
-    public NoteId SourceId { get; init; }
-    public NoteId TargetId { get; init; }
-    public string? Label { get; init; }
+    public NoteId TargetId { get; }
 
     private NoteLink() { }
 
-    private NoteLink(
-        NoteId sourceId,
-        NoteId targetId,
-        string? label)
+    private NoteLink(NoteId targetId)
+    {
+        TargetId = targetId;
+    }
+
+    public static NoteLink Create(NoteId targetId, NoteId sourceId)
     {
         if (sourceId == targetId)
         {
             throw new ArgumentException(
                 "A note cannot link to itself.");
         }
-
-        SourceId = sourceId;
-        TargetId = targetId;
-        Label = label;
-    }
-
-    public static NoteLink Create(
-        NoteId sourceId,
-        NoteId targetId,
-        string? label = null)
-    {
-        return new(
-            sourceId,
-            targetId,
-            label);
+        
+        return new NoteLink(targetId);
     }
 }
