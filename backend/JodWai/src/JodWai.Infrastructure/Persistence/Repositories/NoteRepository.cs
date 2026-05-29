@@ -23,7 +23,7 @@ internal class NoteRepository : INoteRepository
 
     public async Task<Guid?> GetIdByTitleAsync(string title, CancellationToken cancellationToken = default)
         => await _context.Notes.Where(n => n.Title.Value == title)
-        .Select(n => n.Id.Value)
+        .Select(n => (Guid?)n.Id.Value)
         .FirstOrDefaultAsync(cancellationToken);
 
     public void Update(Note note)
