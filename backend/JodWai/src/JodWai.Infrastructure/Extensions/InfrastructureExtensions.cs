@@ -1,4 +1,5 @@
 using JodWai.Application.Interfaces;
+using JodWai.Infrastructure.Parsing;
 using JodWai.Infrastructure.Persistence;
 using JodWai.Infrastructure.Persistence.Repositories;
 using JodWai.Infrastructure.Persistence.Workers;
@@ -18,6 +19,7 @@ public static class InfrastructureExtensions
                 configuration.GetConnectionString("jodwai-db")));
 
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<INoteLinkParser, WikiStyleNoteLinkParser>();
 
 
         return services;
