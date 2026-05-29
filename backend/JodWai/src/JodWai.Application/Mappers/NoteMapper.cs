@@ -8,11 +8,13 @@ public static class NoteMapper
     public static NoteDto ToDto(this Note note)
     {
         return new NoteDto(
-            note.Id.Value,
-            note.Title.ToString(),
-            note.Content.ToString(),
-            note.CreatedAt,
-            note.UpdatedAt
+            Id: note.Id.Value,
+            Title: note.Title.ToString(),
+            Content: note.Content.ToString(),
+            Links: note.Links,
+            Tags: note.Tags,
+            CreatedAt: note.CreatedAt,
+            UpdatedAt: note.UpdatedAt
         );
     }
 
