@@ -4,7 +4,7 @@ namespace JodWai.Domain.Entities;
 
 public class Note
 {
-    private readonly List<NoteLink> _noteLinks = [];
+    private readonly List<NoteLink> _links = [];
     private readonly List<Tag> _tags = [];
 
     public NoteId Id { get; }
@@ -13,7 +13,7 @@ public class Note
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    public IReadOnlyList<NoteLink> Links => _noteLinks;
+    public IReadOnlyList<NoteLink> Links => _links;
     public IReadOnlyCollection<Tag> Tags => _tags;
 
     private Note()
@@ -58,28 +58,28 @@ public class Note
 
     private void AddLink(NoteId targetId)
     {
-        if (_noteLinks.Any(l => l.TargetId == targetId))
+        if (_links.Any(l => l.TargetId == targetId))
             return;
 
-        _noteLinks.Add(NoteLink.Create(targetId, Id));
+        _links.Add(NoteLink.Create(targetId, Id));
     }
 
     private void RemoveLink(NoteId targetId)
     {
-        _noteLinks.RemoveAll(x => x.TargetId == targetId);
+        _links.RemoveAll(x => x.TargetId == targetId);
     }
 
     public void SyncLinks(List<NoteId> validIds)
     {
         if (!validIds.Any())
         {
-            _noteLinks.Clear();
+            _links.Clear();
             return;
         }
 
         var validSet = validIds.ToHashSet();
 
-        var orphanedIds = _noteLinks
+        var orphanedIds = _links
             .Where(l => !validSet.Contains(l.TargetId))
             .Select(l => l.TargetId)
             .ToList();
