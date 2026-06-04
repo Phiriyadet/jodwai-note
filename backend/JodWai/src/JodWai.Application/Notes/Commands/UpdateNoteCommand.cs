@@ -15,49 +15,89 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
 {
     private readonly INoteRepository _noteRepository;
     private readonly INoteLinkParser _parser;
+
     public UpdateNoteCommandHandler(INoteRepository noteRepository, INoteLinkParser parser)
     {
         _noteRepository = noteRepository;
         _parser = parser;
     }
+
     public async Task<NoteDto> Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
     {
         var noteId = NoteId.From(request.Request.Id);
-        var note = await _noteRepository.GetByIdAsync(noteId);
+        var note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
 
         if (note is null)
         {
-            throw new KeyNotFoundException("Note not found.");
+            throw new KeyNotFoundException($"Note with id {noteId} not found.");
         }
 
-        var title = NoteTitle.From(request.Request.Title);
-        var content = NoteContent.From(request.Request.Content);
+        var oldTitle = note.Title;
+        var newTitle = request.Request.Title is { Length: > 0 }
+            ? NoteTitle.From(request.Request.Title)
+            : null;
+        var newContent = request.Request.Content is { Length: > 0 }
+            ? NoteContent.From(request.Request.Content)
+            : null;
 
-        var existingTitle = await _noteRepository.GetIdByTitleAsync(title.Value, cancellationToken);
+        var titleChanged = newTitle is not null && oldTitle.Value != newTitle.Value;
 
-        if (existingTitle != null)
+        //Before update — guard against duplicate title conflict
+        if (titleChanged)
         {
-            throw new InvalidOperationException("Title already exists.");
+            var existingTitle = await _noteRepository
+                .GetIdByTitleAsync(newTitle!.Value, cancellationToken);
+
+            if (existingTitle.HasValue)
+            {
+                throw new InvalidOperationException(
+                    $"Title '{newTitle.Value}' already exists in the system.");
+            }
         }
 
         note.Update(
-            title: NoteTitle.From(request.Request.Title),
-            content: content);
+            title: newTitle,
+            content: newContent);
 
-        var linkIds = await _processLinksAsync(content, cancellationToken);
-
+        var linkIds = await _processLinksAsync(newContent, cancellationToken);
         note.SyncLinks(linkIds);
 
         _noteRepository.Update(note);
 
-        await _noteRepository.SaveChangesAsync();
+        //After update — propagate the rename to all referencing notes
+        if (titleChanged)
+        {
+            var notesRaf = await _noteRepository
+                .GetNotesReferencingAsync(note.Id, cancellationToken);
+
+            foreach (var noteRaf in notesRaf)
+            {
+                var contentWithUpdatedLinks = ReplaceLinkTitlesInContent(
+                    noteRaf.Content,
+                    oldTitle,
+                    newTitle);
+
+                noteRaf.Update(
+                    title: null,
+                    content: contentWithUpdatedLinks);
+                _noteRepository.Update(noteRaf);
+            }
+        }
+
+        await _noteRepository.SaveChangesAsync(cancellationToken);
 
         return note.ToDto();
     }
 
-    private async Task<List<NoteId>> _processLinksAsync(NoteContent content, CancellationToken cancellationToken)
+    private async Task<List<NoteId>> _processLinksAsync(
+        NoteContent? content,
+        CancellationToken cancellationToken)
     {
-        // Parse links from content
+        if (content is null)
+        {
+            return [];
+        }
+
         var parsedLinkTitles = _parser.Parse(content)
             .Select(link => link.TargetTitle);
 
@@ -65,28 +105,43 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
 
         foreach (var title in parsedLinkTitles)
         {
-            // Try to find existing note by title
-            var existingId = await _noteRepository.GetIdByTitleAsync(title, cancellationToken);
+            var existingId = await _noteRepository
+                .GetIdByTitleAsync(title, cancellationToken);
 
             if (existingId.HasValue)
             {
-                // Link exists: Add ID
                 linkIds.Add(NoteId.From(existingId.Value));
             }
             else
             {
-                // Link missing: Create a new blank note with the same title
                 var newBlankNote = Note.Create(
                     title: NoteTitle.From(title),
-                    content: NoteContent.From("")); // Reuse or create a blank content
+                    content: NoteContent.From(string.Empty));
 
-                var createdId = await _noteRepository.CreateAsync(newBlankNote, cancellationToken);
-                linkIds.Add(createdId.Id);
+                var createdNote = await _noteRepository
+                    .CreateAsync(newBlankNote, cancellationToken);
+
+                linkIds.Add(createdNote.Id);
             }
         }
 
         return linkIds;
     }
 
+    private NoteContent ReplaceLinkTitlesInContent(
+        NoteContent content,
+        NoteTitle oldTitle,
+        NoteTitle? newTitle)
+    {
+        if (newTitle is null || oldTitle.Value == newTitle.Value)
+        {
+            return content;
+        }
+
+        var updatedContent = content.Value
+            .Replace($"[[{oldTitle.Value}]]", $"[[{newTitle.Value}]]");
+
+        return NoteContent.From(updatedContent);
+    }
 }
 
