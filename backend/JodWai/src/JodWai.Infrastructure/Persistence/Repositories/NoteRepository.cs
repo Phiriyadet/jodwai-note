@@ -26,6 +26,12 @@ internal class NoteRepository : INoteRepository
         .Select(n => (Guid?)n.Id.Value)
         .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Note>> GetNotesReferencingAsync(NoteId noteId, CancellationToken cancellationToken)
+        => await _context.Notes
+        .Where(n => n.Links
+        .Any(l => l.TargetId == noteId))
+        .ToListAsync(cancellationToken);
+
     public void Update(Note note)
         => _context.Notes.Update(note);
     public void Delete(Note note)
