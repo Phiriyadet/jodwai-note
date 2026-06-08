@@ -19,7 +19,7 @@ internal class NoteRepository : INoteRepository
         .ToListAsync(cancellationToken);
 
     public async Task<Note?> GetByIdAsync(NoteId id, CancellationToken cancellationToken = default)
-        => await _context.Notes.FirstOrDefaultAsync(n => n.Id.Value == id.Value, cancellationToken);
+        => await _context.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
     public async Task<Guid?> GetIdByTitleAsync(string title, CancellationToken cancellationToken = default)
         => await _context.Notes.Where(n => n.Title.Value == title)
