@@ -109,8 +109,9 @@ ScaffoldingReadMe.txt
 *.nuget.targets
 
 # Entity Framework Migrations (keep tracked, but backup)
-# **/Migrations/*.Designer.cs
-# **/Migrations/*.cs.user
+**/Migrations/*.Designer.cs
+**/Migrations/*.cs.user
+**/Migrations/*
 
 # Test Results
 **/TestResults/

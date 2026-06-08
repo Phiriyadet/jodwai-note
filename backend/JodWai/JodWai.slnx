@@ -5,7 +5,11 @@
     <Project Path="src/JodWai.Domain/JodWai.Domain.csproj" />
     <Project Path="src/JodWai.Infrastructure/JodWai.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/JodWai.Tests.Integration/JodWai.Tests.Integration.csproj" />
+    <Project Path="tests/JodWai.Tests.Unit/JodWai.Tests.Unit.csproj" />
+  </Folder>
   <Project Path="JodWai.AppHost/JodWai.AppHost.csproj" />
+  <Project Path="JodWai.MigrationService/JodWai.MigrationService.csproj" Id="f02ccbb7-c2ec-4dd7-8339-d97596e47ffd" />
   <Project Path="JodWai.ServiceDefaults/JodWai.ServiceDefaults.csproj" />
 </Solution>

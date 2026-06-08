@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JodWai.MigrationService\JodWai.MigrationService.csproj" />
     <ProjectReference Include="..\src\JodWai.Api\JodWai.Api.csproj" />
   </ItemGroup>
 
