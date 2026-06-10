@@ -18,8 +18,11 @@ public static class NoteMapper
         );
     }
 
-    public static IEnumerable<NoteDto> ToDto(this IEnumerable<Note> notes)
+    public static IReadOnlyList<NoteDto> ToDto(
+    this IEnumerable<Note> notes)
     {
-        return notes.Select(n => n.ToDto());
+        return notes
+            .Select(n => n.ToDto())
+            .ToList();
     }
 }

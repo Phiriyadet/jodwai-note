@@ -1,3 +1,5 @@
+using JodWai.Application.Common.Results;
+using JodWai.Application.Common.Results.Errors;
 using JodWai.Application.Interfaces;
 using JodWai.Application.Mappers;
 using JodWai.Application.Notes.Dtos;
@@ -7,11 +9,11 @@ using JodWai.Domain.ValueObjects;
 
 using MediatR;
 
-namespace JodWai.Application.Notes.Commands;
+namespace JodWai.Application.Notes.Commands.CreateNote;
 
-public record CreateNoteCommand(CreateNoteRequest Request) : IRequest<NoteDto>;
+public record CreateNoteCommand(CreateNoteRequest Request) : IRequest<Result<NoteDto>>;
 
-public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteDto>
+public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Result<NoteDto>>
 {
     private readonly INoteRepository _noteRepository;
     private readonly INoteLinkParser _parser;
@@ -22,7 +24,7 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
         _parser = parser;
     }
 
-    public async Task<NoteDto> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
+    public async Task<Result<NoteDto>> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
     {
         // 1. Prepare the new note
         var title = NoteTitle.From(request.Request.Title);
@@ -32,7 +34,7 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
 
         if (existingTitle != null)
         {
-            throw new InvalidOperationException("Title already exists.");
+            return Result<NoteDto>.Failure(NoteErrors.DuplicateTitle(title.Value));
         }
 
 
@@ -50,7 +52,7 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
         var createdNote = await _noteRepository.CreateAsync(note, cancellationToken);
         await _noteRepository.SaveChangesAsync(cancellationToken);
 
-        return createdNote.ToDto();
+        return Result<NoteDto>.Success(createdNote.ToDto());
     }
 
     private async Task<List<NoteId>> _processLinksAsync(NoteContent content, CancellationToken cancellationToken)

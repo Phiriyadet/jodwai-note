@@ -12,17 +12,20 @@ internal class NoteRepository : INoteRepository
     public NoteRepository(AppDbContext context) => _context = context;
 
     public async Task<Note> CreateAsync(Note note, CancellationToken cancellationToken = default)
-        => (await _context.Notes.AddAsync(note, cancellationToken)).Entity;
+        => (await _context.Notes
+        .AddAsync(note, cancellationToken)).Entity;
 
-    public async Task<IEnumerable<Note>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Note>> GetAllAsync(CancellationToken cancellationToken = default)
         => await _context.Notes.AsNoTracking()
         .ToListAsync(cancellationToken);
 
     public async Task<Note?> GetByIdAsync(NoteId id, CancellationToken cancellationToken = default)
-        => await _context.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+        => await _context.Notes
+        .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
     public async Task<Guid?> GetIdByTitleAsync(string title, CancellationToken cancellationToken = default)
-        => await _context.Notes.Where(n => n.Title.Value == title)
+        => await _context.Notes
+        .Where(n => n.Title.Value == title)
         .Select(n => (Guid?)n.Id.Value)
         .FirstOrDefaultAsync(cancellationToken);
 
@@ -30,6 +33,13 @@ internal class NoteRepository : INoteRepository
         => await _context.Notes
         .Where(n => n.Links
         .Any(l => l.TargetId == noteId))
+        .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Note>> SearchAsync(string keyword, CancellationToken cancellationToken)
+        => await _context.Notes.AsNoTracking()
+        .Where(x =>
+            x.Title.Value.Contains(keyword) ||
+            x.Content.Value.Contains(keyword))
         .ToListAsync(cancellationToken);
 
     public void Update(Note note)

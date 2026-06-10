@@ -1,5 +1,6 @@
+using JodWai.Application.Common.Results.Errors;
 using JodWai.Application.Interfaces;
-using JodWai.Application.Notes.Commands;
+using JodWai.Application.Notes.Commands.UpdateNote;
 using JodWai.Application.Notes.Dtos;
 using JodWai.Application.Notes.Dtos.Requests;
 using JodWai.Domain.Entities;
@@ -13,7 +14,7 @@ namespace JodWai.Tests.Unit.Application.Notes.Commands;
 public class UpdateNoteCommandHandlerTests
 {
     private readonly Mock<INoteRepository> _mockRepository = new();
-    private readonly Mock<INoteLinkParser> _mockParser     = new();
+    private readonly Mock<INoteLinkParser> _mockParser = new();
     private readonly UpdateNoteCommandHandler _sut;
 
     public UpdateNoteCommandHandlerTests()
@@ -22,7 +23,7 @@ public class UpdateNoteCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenNoteDoesNotExist_ThrowsKeyNotFoundException()
+    public async Task Handle_WhenNoteDoesNotExist_ReturnsNotFoundError()
     {
         // Arrange
         var request = new UpdateNoteRequest(NoteTestConstants.ValidNoteId, NoteTestConstants.ValidNoteTitle, NoteTestConstants.ValidNoteContent);
@@ -33,15 +34,17 @@ public class UpdateNoteCommandHandlerTests
             .ReturnsAsync((Note?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            _sut.Handle(command, CancellationToken.None));
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(NoteErrors.NotFound(request.Id));
 
         _mockRepository.Verify(r => r.Update(It.IsAny<Note>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WhenNewTitleAlreadyExistsOnAnotherNote_ThrowsInvalidOperationException()
+    public async Task Handle_WhenNewTitleAlreadyExistsOnAnotherNote_ReturnError()
     {
         // Arrange
         var existingNote = Note.Create(
@@ -63,10 +66,10 @@ public class UpdateNoteCommandHandlerTests
             .ReturnsAsync(conflictingNoteId);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _sut.Handle(command, CancellationToken.None));
+        var result = await _sut.Handle(command, CancellationToken.None);
 
-        ex.Message.Should().Contain(newTitle);
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(NoteErrors.DuplicateTitleCode);
 
         _mockRepository.Verify(r => r.Update(It.IsAny<Note>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -311,10 +314,12 @@ public class UpdateNoteCommandHandlerTests
 
         // Assert
         result.Should().NotBeNull();
+        result.Value.Title.Should().Be(existingNote.Title.Value);
+        result.Value.Content.Should().Be(existingNote.Content.Value);
         _mockParser.Verify(p => p.Parse(It.IsAny<NoteContent>()), Times.Never);
         _mockRepository.Verify(r => r.GetIdByTitleAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockRepository.Verify(r => r.GetNotesReferencingAsync(It.IsAny<NoteId>(), It.IsAny<CancellationToken>()), Times.Never);
-        _mockRepository.Verify(r => r.Update(existingNote), Times.Once);
-        _mockRepository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(r => r.Update(existingNote), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
