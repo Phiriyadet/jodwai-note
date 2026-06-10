@@ -42,6 +42,12 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Resul
             ? NoteContent.From(request.Request.Content)
             : null;
 
+        if(newTitle is null && newContent is null)
+        {
+            // Nothing to update
+            return Result<NoteDto>.Success(note.ToDto());
+        }
+
         var titleChanged = newTitle is not null && oldTitle.Value != newTitle.Value;
 
         //Before update — guard against duplicate title conflict
