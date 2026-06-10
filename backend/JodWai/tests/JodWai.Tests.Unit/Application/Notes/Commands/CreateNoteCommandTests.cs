@@ -1,5 +1,6 @@
+using JodWai.Application.Common.Results.Errors;
 using JodWai.Application.Interfaces;
-using JodWai.Application.Notes.Commands;
+using JodWai.Application.Notes.Commands.CreateNote;
 using JodWai.Application.Notes.Dtos;
 using JodWai.Application.Notes.Dtos.Requests;
 using JodWai.Domain.Entities;
@@ -22,7 +23,7 @@ public class CreateNoteCommandTests
     }
 
     [Fact]
-    public async Task Handle_WithExistingTitle_ThrowsInvalidOperationExceptionBeforePersisting()
+    public async Task Handle_WithExistingTitle_ReturnErrorBeforePersisting()
     {
         // Arrange
         var request = new CreateNoteRequest(NoteTestConstants.ValidNoteTitle, NoteTestConstants.ValidNoteContent);
@@ -33,8 +34,10 @@ public class CreateNoteCommandTests
             .ReturnsAsync(Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _sut.Handle(command, CancellationToken.None));
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(NoteErrors.DuplicateTitleCode);
 
         _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Note>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
