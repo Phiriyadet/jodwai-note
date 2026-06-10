@@ -6,16 +6,16 @@ using MediatR;
 
 namespace JodWai.Application.Notes.Queries;
 
-public record GetAllNotesQuery() : IRequest<IEnumerable<NoteDto>>;
+public record GetAllNotesQuery() : IRequest<IReadOnlyList<NoteDto>>;
 
-public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, IEnumerable<NoteDto>>
+public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, IReadOnlyList<NoteDto>>
 {
     private readonly INoteRepository _noteRepository;
     public GetAllNotesQueryHandler(INoteRepository noteRepository)
     {
         _noteRepository = noteRepository;
     }
-    public async Task<IEnumerable<NoteDto>> Handle(GetAllNotesQuery request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<NoteDto>> Handle(GetAllNotesQuery request, CancellationToken cancellationToken)
     {
         var notes = await _noteRepository.GetAllAsync();
 
