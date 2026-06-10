@@ -1,3 +1,5 @@
+using JodWai.Application.Common.Results;
+using JodWai.Application.Common.Results.Errors;
 using JodWai.Application.Interfaces;
 using JodWai.Application.Mappers;
 using JodWai.Application.Notes.Dtos;
@@ -7,11 +9,11 @@ using JodWai.Domain.ValueObjects;
 
 using MediatR;
 
-namespace JodWai.Application.Notes.Commands;
+namespace JodWai.Application.Notes.Commands.UpdateNote;
 
-public record UpdateNoteCommand(UpdateNoteRequest Request) : IRequest<NoteDto>;
+public record UpdateNoteCommand(UpdateNoteRequest Request) : IRequest<Result<NoteDto>>;
 
-public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteDto>
+public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Result<NoteDto>>
 {
     private readonly INoteRepository _noteRepository;
     private readonly INoteLinkParser _parser;
@@ -22,14 +24,14 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
         _parser = parser;
     }
 
-    public async Task<NoteDto> Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
+    public async Task<Result<NoteDto>> Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
     {
         var noteId = NoteId.From(request.Request.Id);
         var note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
 
         if (note is null)
         {
-            throw new KeyNotFoundException($"Note with id {noteId} not found.");
+            return Result<NoteDto>.Failure(NoteErrors.NotFound(noteId.Value));
         }
 
         var oldTitle = note.Title;
@@ -39,6 +41,12 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
         var newContent = request.Request.Content is { Length: > 0 }
             ? NoteContent.From(request.Request.Content)
             : null;
+
+        if(newTitle is null && newContent is null)
+        {
+            // Nothing to update
+            return Result<NoteDto>.Success(note.ToDto());
+        }
 
         var titleChanged = newTitle is not null && oldTitle.Value != newTitle.Value;
 
@@ -50,8 +58,7 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
 
             if (existingTitle.HasValue)
             {
-                throw new InvalidOperationException(
-                    $"Title '{newTitle.Value}' already exists in the system.");
+                return Result<NoteDto>.Failure(NoteErrors.DuplicateTitle(newTitle.Value));
             }
         }
 
@@ -86,7 +93,7 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, NoteD
 
         await _noteRepository.SaveChangesAsync(cancellationToken);
 
-        return note.ToDto();
+        return Result<NoteDto>.Success(note.ToDto());
     }
 
     private async Task<List<NoteId>> _processLinksAsync(

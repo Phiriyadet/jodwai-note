@@ -1,4 +1,7 @@
-﻿using JodWai.Application.Notes.Commands;
+using JodWai.Application.Common.Results.Errors;
+using JodWai.Application.Notes.Commands.CreateNote;
+using JodWai.Application.Notes.Commands.DeleteNote;
+using JodWai.Application.Notes.Commands.UpdateNote;
 using JodWai.Application.Notes.Dtos;
 using JodWai.Application.Notes.Dtos.Requests;
 using JodWai.Application.Notes.Queries;
@@ -17,11 +20,24 @@ public sealed class NotesController(ISender sender) : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<NoteDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(
+     [FromQuery] string? keyword,
+     CancellationToken cancellationToken)
     {
-        var notes = await _sender.Send(new GetAllNotesQuery(), cancellationToken);
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            var notes = await _sender.Send(
+                new GetAllNotesQuery(),
+                cancellationToken);
 
-        return Ok(notes);
+            return Ok(notes);
+        }
+
+        var searchResult = await _sender.Send(
+            new SearchNotesQuery(keyword),
+            cancellationToken);
+
+        return Ok(searchResult);
     }
 
     [HttpGet("{id:guid}")]
@@ -48,33 +64,44 @@ public sealed class NotesController(ISender sender) : ControllerBase
         [FromBody] CreateNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var note = await _sender.Send(
+        var result = await _sender.Send(
             new CreateNoteCommand(request),
             cancellationToken);
 
+        if (result.IsFailure)
+        {
+            return BadRequest(result.Error);
+        }
+
         return CreatedAtAction(
-            nameof(GetById),
-            new { id = note.Id },
-            note);
+        nameof(GetById),
+        new { id = result.Value.Id },
+        result.Value);
     }
 
     [HttpPut]
     [ProducesResponseType(typeof(NoteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
         [FromBody] UpdateNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var note = await _sender.Send(
+        var result = await _sender.Send(
             new UpdateNoteCommand(request),
             cancellationToken);
 
-        if (note is null)
+        if (result.IsFailure)
         {
-            return NotFound();
+            return result.Error!.Code switch
+            {
+                NoteErrors.NotFoundCode => NotFound(result.Error),
+                _ => BadRequest(result.Error)
+            };
+
         }
 
-        return Ok(note);
+        return Ok(result.Value);
     }
 
     [HttpDelete("{id:guid}")]
@@ -84,9 +111,18 @@ public sealed class NotesController(ISender sender) : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        await _sender.Send(
+        var result = await _sender.Send(
         new DeleteNoteCommand(id),
         cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error!.Code switch
+            {
+                NoteErrors.NotFoundCode => NotFound(result.Error),
+                _ => BadRequest(result.Error)
+            };
+        }
 
         return NoContent();
     }
