@@ -1,6 +1,5 @@
 # ============================================
-# WayPoint System - Complete .gitignore
-# Multi-project: Backend (.NET) + Web (Next.js) + Mobile (React Native)
+# JodWai-Note - Complete .gitignore
 # ============================================
 
 # ============================================
@@ -51,7 +50,7 @@ Thumbs.db
 *~
 
 # ============================================
-# BACKEND (.NET 8/9)
+# BACKEND (.NET)
 # ============================================
 
 # Build outputs
