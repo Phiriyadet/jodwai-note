@@ -1,74 +1,100 @@
 # JodWai Note
 
-A note-taking REST API built with ASP.NET Core Web API. Features include notes with title/content, tags, and note-to-note links for organizing related content.
+## Overview
+JodWai Note is a note-taking REST API built with ASP.NET Core Web API. The system manages notes with title, content, tags, and note-to-note relationships (links). Users can create, read, update, and delete notes, organize them with tags, and link related notes together.
 
 ## Tech Stack
-
-- **Language**: C# (.NET 10.0)
-- **Framework**: ASP.NET Core Web API
-- **Architecture**: Clean Architecture (Domain, Application, Infrastructure, API layers)
-- **ORM**: Entity Framework Core 10.0.7
-- **Database**: PostgreSQL
-- **CQRS Pattern**: MediatR 14.1.0
-- **API Documentation**: Scalar
+- **Backend:** .NET Core 10.0.7
+- **Frontend:** Not yet defined.
+- **Database:** PostgreSQL
+- **Testing Framework:** xUnit + Moq
 
 ## Prerequisites
-
-- .NET 10.0 SDK
-- PostgreSQL client or Docker
-- `dotnet` CLI
+- .NET SDK 6.0 or higher
+- PostgreSQL 14 or higher
+- Node.js for frontend (if applicable)
 
 ## Local Setup
 
-1. Restore dependencies:
+### Backend
+1. Clone the repository:
    ```bash
-   dotnet restore
+   git clone https://github.com/Phiriyadet/jodwai-note.git
+   cd jodwai-note/backend
+   ```
+2. Update `appsettings.Development.json` with your PostgreSQL connection string.
+3. Run migrations:
+   ```bash
+   dotnet ef database update -c AppDbContext
+   ```
+4. Build and run the application:
+   ```bash
+   dotnet build
+   dotnet run
    ```
 
-2. Configure connection string in `backend/JodWai/src/JodWai.Api/appsettings.json` or use user secrets for development.
-
-3. Apply migrations:
+### Frontend (if applicable)
+1. Navigate to the frontend directory:
    ```bash
-   dotnet ef database update --project JodWai.Infrastructure --startup JodWai.AppHost
+   cd ../frontend/JodWai-Web/
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build and serve:
+   ```bash
+   npm start
    ```
 
-4. Run the application:
-   ```bash
-   dotnet run --project backend/JodWai/src/JodWai.Api/JodWai.Api.csproj
-   ```
+## Running Application
+Run the application as described in the "Local Setup" section.
 
-## Run Tests
-
+## Running Tests
+To run all tests, use:
+```bash
+dotnet test
+```
+To run specific test project:
 ```bash
 dotnet test backend/JodWai/src/JodWai.Tests.Unit/JodWai.Tests.Unit.csproj
-dotnet test backend/JodWai/src/JodWai.Tests.Integration/JodWai.Tests.Integration.csproj
 ```
 
-## Key Environment Variables
-
-- `ConnectionStrings:DefaultConnection` - PostgreSQL connection string
-- `Logging:LogLevel:Default` - Default log level
-- `UserSecretsId` - For development credentials
-- `Logging:LogLevel:Microsoft` - EF Core log level
-
-## Project Structure
-
+## Database Migration
+Migrations are managed in the `Migrations` folder. To apply migrations, run:
+```bash
+dotnet ef database update -c AppDbContext
 ```
-d:\CodingProjects\jodwai-note
+
+## Environment Variables
+Set environment variables as required in your project's configuration files.
+
+## Folder Structure
+```
+JodWai.Note/
 ├── backend/
-│   └── JodWai/
-│       ├── JodWai.AppHost/          # ASP.NET Host application
-│       ├── JodWai.MigrationService/ # Database migrations runner
-│       └── src/
-│           ├── JodWai.Api/          # HTTP API layer
-│           ├── JodWai.Application/  # CQRS commands, queries, DTOs
-│           ├── JodWai.Domain/       # Entities, value objects, business rules
-│           └── JodWai.Infrastructure/# EF Core, repository implementations
-└── frontend/                         # Frontend application (if applicable)
+│   ├── JodWai/
+│   │   ├── Controllers/
+│   │   ├── Services/
+│   │   ├── Handlers/
+│   │   ├── Repositories/
+│   │   └── ...
+│   ├── Program.cs
+│   └── appsettings.json
+├── frontend/
+│   └── JodWai-Web/
+│       ├── src/
+│       ├── public/
+│       └── package.json
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── CONVENTIONS.md
+    ├── DECISIONS.md
+    ├── DOMAIN.md
+    └── TESTING.md
 ```
 
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md) - System design and layer responsibilities
-- [Domain Model](docs/DOMAIN.md) - Entities, value objects, business rules
-- [Conventions](docs/CONVENTIONS.md) - Code style and project guidelines
+## Related Documentation
+- [Architecture](docs/ARCHITECTURE.md)
+- [Domain](docs/DOMAIN.md)
+- [Testing](docs/TESTING.md)

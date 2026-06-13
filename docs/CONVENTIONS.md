@@ -1,335 +1,219 @@
-# Conventions
+# Project Conventions
 
-This document outlines coding style and conventions specific to the JodWai Note project.
+This document outlines the naming and design patterns followed in the JodWai Note project to ensure consistency and readability.
 
-## Folder and File Naming
+## Naming Conventions
 
-### Folder Structure
+### Files, Folders, Classes, Interfaces, Methods, Variables, Constants
+- **Files:** PascalCase (e.g., `NotesController.cs`, `NoteService.cs`)
+- **Folders:** PascalCase (e.g., `Controllers`, `Services`, `Repositories`)
+- **Classes:** PascalCase (e.g., `Note`, `Tag`, `NoteRepository`)
+- **Interfaces:** InterfacePrefix + PascalCase (e.g., `INoteRepository`, `ITagService`)
+- **Methods:** PascalCase (e.g., `GetAllNotes()`, `CreateNote(Note note)`)
+- **Variables:** camelCase (e.g., `noteId`, `noteTitle`, `noteContent`)
+- **Constants:** PascalCase with underscores (e.g., `MAX_NOTE_LENGTH = 256`)
+
+## File Structure
+
+The project follows a structured file layout as shown below:
+
 ```
-JodWai.Domain/
-  Entities/           # Domain entities (aggregates)
-  ValueObjects/       # Domain value objects
-  Interfaces/         # Domain-level interfaces (if any)
-
-JodWai.Application/
-  Commands/           # Command handlers for writes
-  Queries/            # Query handlers for reads
-  Dtos/               # Data transfer objects
-  Mappers/            # Entity-to-DTO mapping
-  Interfaces/         # Repository and other interfaces
-  Mediators/          # Command/Query mediators (if separate)
-
-JodWai.Infrastructure/
-  Persistence/        # EF Core DbContext and configurations
-  Repositories/       # Repository implementations
-  Migrations/         # Database migration files
-  Workers/            # Background jobs (if any)
-
-JodWai.Api/
-  Controllers/        # HTTP endpoints
-  Middleware/         # Custom middleware
-  Extensions/         # Service collection extensions
-```
-
-### File Naming
-- **Entities**: `PascalCase.cs` (e.g., `Note.cs`)
-- **Value Objects**: `PascalCase.cs` (e.g., `NoteTitle.cs`)
-- **Commands**: `PascalCaseCommand.cs` (e.g., `CreateNoteCommand.cs`)
-- **Queries**: `PascalCaseQuery.cs` (e.g., `GetNotesQuery.cs`)
-- **DTOs**: `PascalCaseDto.cs` (e.g., `NoteDto.cs`)
-- **Interfaces**: `IPascalCase.cs` (e.g., `INoteRepository.cs`)
-- **Implementations**: `PascalCaseImplementation.cs` (e.g., `NoteRepository.cs`)
-
-## Class, Method, Variable Naming
-
-### Classes
-- **Entities**: Noun, PascalCase (`Note`)
-- **Value Objects**: Noun, PascalCase, `sealed record` (`NoteTitle`)
-- **Interfaces**: `I` prefix + Noun, PascalCase (`INoteRepository`)
-- **DTOs**: Noun + `Dto`, PascalCase (`NoteDto`)
-
-### Methods
-- Instance methods: `camelCase` (`UpdateTitle()`)
-- Static factory methods: `PascalCase` (`NoteTitle.From()`)
-- Private methods: prefix with underscore (`_AddLink()`)
-
-### Properties
-- Public properties: `PascalCase` (`Title`, `Content`)
-- Private backing fields: lowercase (`_links`, `_tags`)
-- Read-only collections: `IReadOnlyList<T>`/`IReadOnlyCollection<T>`
-
-### Constants
-- `const int MaxLength = 200;`
-- Meaningful names with clear purpose
-
-## Code Style
-
-### Record Types for Value Objects
-```csharp
-public sealed record NoteTitle
-{
-    public const int MaxLength = 200;
-    public string Value { get; }
-    // constructor and factory methods
-}
-```
-
-### Entity with Private Setters
-```csharp
-public class Note
-{
-    public NoteId Id { get; }
-    public NoteTitle Title { get; private set; }
-    public NoteContent Content { get; private set; }
-    // private constructor and factory method
-    // public methods like Update()
-}
-```
-
-### Value Object Factory Methods
-```csharp
-public static NoteTitle From(string value)
-{
-    if (string.IsNullOrWhiteSpace(value))
-        throw new ArgumentException("Title cannot be empty.");
-    
-    value = value.Trim();
-    if (value.Length > MaxLength)
-        throw new ArgumentException($"Title cannot exceed {MaxLength} characters.");
-    
-    return new NoteTitle(value);
-}
+JodWai.Note/
+├── backend/
+│   ├── JodWai/
+│   │   ├── Controllers/ - HTTP endpoints for notes
+│   │   ├── Services/ - Business logic services
+│   │   ├── Handlers/ - MediatR command/query handlers
+│   │   ├── Repositories/ - Data access layers
+│   │   └── Domain/ - Entity, value object, and domain service definitions
+│   ├── Program.cs - Application entry point and dependency injection
+│   └── appsettings.json - Configuration
+├── frontend/
+│   └── JodWai-Web/
+│       ├── src/
+│       ├── public/
+│       └── package.json (if applicable)
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── CONVENTIONS.md
+    ├── DECISIONS.md
+    ├── DOMAIN.md
+    └── TESTING.md
 ```
 
 ## Error Handling
 
-### Domain Exceptions
+- **Error Representation:** Custom `ApiException` for all application errors.
+- **Propagation:** Errors are propagated up the call stack until caught and handled by middleware or controllers.
+- **Exposure:** Error messages are returned to clients with HTTP status codes (e.g., 400 Bad Request, 500 Internal Server Error).
+
+Example:
 ```csharp
-throw new ArgumentException("Title cannot be empty.");
-throw new InvalidOperationException("At least one field must be updated.");
-throw new InvalidOperationException("Cannot add self-reference.");
+[ApiController]
+[Route("api/[controller]")]
+public class NotesController : ControllerBase
+{
+    private readonly INoteService _noteService;
+
+    public NotesController(INoteService noteService)
+    {
+        _noteService = noteService;
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetNote(Guid id)
+    {
+        try
+        {
+            var note = await _noteService.GetNoteById(id);
+            return Ok(note);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "Internal server error");
+        }
+    }
+}
 ```
-
-### Application Layer Exceptions
-- Use domain exceptions for business rule violations
-- Don't catch and swallow exceptions in handlers
-- Return appropriate MediatR `CommandResult`/`QueryResult`
-
-### Infrastructure Layer Exceptions
-- Let EF Core exceptions propagate
-- Handle connection errors appropriately
-- Don't expose implementation details
 
 ## Validation
 
-### Where Validation Lives
-- **Value Objects**: Constructor-based validation (boundary check)
-- **Domain Entity**: Business rule validation in public methods
-- **Controllers**: Minimal validation; delegate to domain layer
+Validation occurs at the application layer and is performed using DTOs and custom validation attributes.
 
-### Validation Patterns
-- Throw `ArgumentException` for invalid input
-- Throw `InvalidOperationException` for business rule violations
-- Don't validate in controllers; use value objects
-
-### Example
+Example:
 ```csharp
-public NoteContent From(string? value)
+public class NoteDto
 {
-    string settledValue = (value ?? string.Empty).Trim();
-    
-    if (settledValue.Length > MaxLength)
-        throw new ArgumentException("Note content is too long.");
-    
-    return new NoteContent(settledValue);
+    [Required]
+    public string Title { get; set; }
+
+    [Required]
+    public string Content { get; set; }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+public class NotesController : ControllerBase
+{
+    private readonly INoteService _noteService;
+
+    public NotesController(INoteService noteService)
+    {
+        _noteService = noteService;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateNote([FromBody] NoteDto noteDto)
+    {
+        var note = new Note { Title = noteDto.Title, Content = noteDto.Content };
+        await _noteService.CreateNote(note);
+        return CreatedAtAction(nameof(GetNote), new { id = note.Id }, note);
+    }
 }
 ```
 
 ## Logging
 
-### Logging Library
-- `ILogger` from Microsoft.Extensions.Logging
+Logging is performed using Serilog with the following conventions:
 
-### What to Log
-- Entity creation (with ID)
-- Validation errors (with message)
-- Transaction failures
-- External service calls (with correlation IDs)
+- **Log Level:** ERROR, WARNING, INFORMATION, DEBUG
+- **Format:** `{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level}] {Message}{NewLine}{Exception}`
+- **Output:** Console and file (rolling file)
 
-### What NOT to Log
-- PII (personal identifiable information)
-- Sensitive data (passwords, tokens)
-- Full stack traces without context
-
-### Example
+Example:
 ```csharp
-_logger.LogInformation("Created note {Id}", note.Id.Value);
-_logger.LogWarning("Failed to save note {Id}: {Error}", note.Id.Value, ex.Message);
-```
-
-## Tests
-
-### Test Types
-
-| Type | Purpose | Layer |
-|---|---|---|
-| Unit tests | Domain logic, value object invariants | Domain, Application |
-| Integration tests | Repository, DbContext, external services | Infrastructure |
-| API tests | HTTP endpoints, integration with all layers | Api |
-
-### Test Structure
-```csharp
-[TestClass]
-public class CreateNoteCommandTests
+private static readonly ILogger Logger = LoggerFactory.Create(builder =>
 {
-    [TestMethod]
-    public async Task WhenCreatingNote_ThenNoteIsSaved()
+    builder.AddSerilog(new LoggerConfiguration()
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.File("logs/jodwai-note-.log", rollingInterval: RollingInterval.Day)
+        .CreateLogger());
+}).CreateLogger();
+
+public async Task CreateNote(Note note)
+{
+    try
     {
-        // Arrange
-        var command = new CreateNoteCommand(...);
-        
-        // Act
-        var result = await mediator.Send(command);
-        
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNotNull(result.Data);
+        // Business logic
+        Logger.Information("Creating new note with title: {Title}", note.Title);
+    }
+    catch (Exception ex)
+    {
+        Logger.Error(ex, "Failed to create note");
+        throw;
     }
 }
 ```
 
-### Test Naming Conventions
-- `When_{Action}_Then_{ExpectedOutcome}` (happy path)
-- `When_{InvalidCondition}_Then_{ExpectedException}` (error case)
-- Include test subject in name
+## Configuration
 
-### Mocking Guidelines
-- **Mock**: External services (e.g., email, external APIs)
-- **Don't mock**: Domain entities, value objects
-- **Do test**: Repository layer with in-memory or test database
+Configuration is managed using `appsettings.json` and injected into services.
 
-## Database Migrations
-
-### Creating Migrations
-```bash
-dotnet ef migrations add MigrationName --project JodWai.Infrastructure
-```
-
-### Applying Migrations
-```bash
-dotnet ef database update --project JodWai.MigrationService
-```
-
-### Migration File Location
-- `JodWai.Infrastructure/Migrations/`
-
-### Migration Naming
-- Descriptive name (e.g., `AddTagsColumn`)
-- Avoid generic names like `20240101000000_InitialCreate`
-
-## Environment Configuration
-
-### Configuration Files
-- `appsettings.json` - Default configuration
-- `appsettings.Development.json` - Development settings
-- `appsettings.{Environment}.json` - Environment-specific settings
-- `appsettings.{Environment}.UserSecrets.json` - User secrets
-
-### Environment Variables
-
-| Variable | Description |
-|---|---|
-| `ConnectionStrings:DefaultConnection` | PostgreSQL connection string |
-| `Logging:LogLevel:Default` | Default log level |
-| `Logging:LogLevel:Microsoft` | EF Core log level |
-| `UserSecretsId` | Unique identifier for user secrets |
-
-### Reading Configuration
+Example:
 ```csharp
-var connection = builder.Configuration
-    .GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string not found.");
-```
-
-## Common Patterns
-
-### Repository Pattern
-```csharp
-public interface INoteRepository
+public class NoteService : INoteService
 {
-    Task<Note?> GetByIdAsync(NoteId id);
-    Task<IReadOnlyList<Note>> GetAllAsync(List<NoteId> ids);
-    Task AddAsync(Note note);
-    Task UpdateAsync(Note note);
-    Task RemoveAsync(Note note);
-}
-```
+    private readonly AppDbContext _context;
 
-### MediatR Pattern
-```csharp
-public class CreateNoteCommand : IRequest<CommandResult<NoteDto>>
-{
-    public NoteTitle Title { get; set; }
-    public NoteContent Content { get; set; }
-}
-
-public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, CommandResult<NoteDto>>
-{
-    private readonly INoteRepository _repository;
-    
-    public async Task<CommandResult<NoteDto>> Handle(...)
+    public NoteService(AppDbContext context)
     {
-        // business logic
-        await _repository.AddAsync(note);
-        await _repository.SaveChangesAsync();
-        
-        var dto = _mapper.Map(note);
-        return CommandResult.Success(dto);
+        _context = context;
+    }
+
+    // Business logic methods
+}
+```
+
+## Migrations
+
+Migrations are managed using Entity Framework Core and follow the conventional naming convention.
+
+Example:
+```bash
+dotnet ef migrations add InitialCreate -c AppDbContext
+```
+
+## Testing
+
+- **Unit Tests:** Located in `backend/JodWai.Tests.Unit`.
+  - Naming convention: `[FeatureName]Tests.cs`
+  - Example: `NoteServiceTests.cs`
+- **Integration Tests:** Located in `backend/JodWai.Tests.Integration`.
+  - Naming convention: `[FeatureName]IntegrationTests.cs`
+  - Example: `NoteRepositoryIntegrationTests.cs`
+
+## Patterns In Use
+
+- **Clean Architecture:** Separation of concerns with clear layers.
+- **CQRS (Command Query Responsibility Segregation):** Commands and queries are handled separately.
+
+Example:
+```csharp
+public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Unit>
+{
+    private readonly INoteRepository _noteRepository;
+
+    public CreateNoteCommandHandler(INoteRepository noteRepository)
+    {
+        _noteRepository = noteRepository;
+    }
+
+    public async Task<Unit> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
+    {
+        var note = new Note { Title = request.Title, Content = request.Content };
+        await _noteRepository.AddAsync(note);
+        return Unit.Value;
     }
 }
 ```
 
-### DTO Mapping
-```csharp
-public class NoteDto
-{
-    public NoteId Id { get; set; }
-    public NoteTitle Title { get; set; }
-    public NoteContent Content { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset UpdatedAt { get; set; }
-}
-```
+## What To Avoid
 
-## What to Avoid
-
-### Anti-Patterns
-- Exposing domain entities via API
-- Putting business logic in controllers
-- Direct database access in application layer
-- Hardcoded values or magic numbers
-- Missing error handling
-- Silent failures (swallowed exceptions)
-- Null references without `null!`
-
-### Bad Practices
-- Generic exception handling without specific handling
-- Logging PII or sensitive data
-- Overly long method functions
-- Tight coupling (domain depends on infrastructure)
-- Multiple responsibilities in one class
-
-## Additional Guidelines
-
-### SOLID Principles
-- **Single Responsibility**: Each class does one thing well
-- **Open/Closed**: Open for extension, closed for modification
-- **Liskov Substitution**: Subtypes must be substitutable
-- **Interface Segregation**: Small, focused interfaces
-- **Dependency Inversion**: Depend on abstractions, not concretions
-
-### Performance Considerations
-- Avoid N+1 queries (use `.Include()` or projections)
-- Batch insert/update when possible
-- Use async/await for I/O operations
-- Consider caching for read-heavy operations
+- **Hardcoded SQL Queries:** All database access should be abstracted through repositories.
+- **Direct Access to DbContext in Domain Layer:** Business logic should not directly interact with the database.
+- **Unnecessary Complexity:** Only implement features that add value, avoiding over-engineering.

@@ -1,180 +1,103 @@
-# Domain Model
+# Domain Overview
 
-## Core Domain Concepts
-
-### Note Management
-
-Notes are the primary domain object. Each note has:
-- A unique identifier (`Id`)
-- A title (1-200 characters)
-- Content/body (0-10000 characters)
-- Creation timestamp
-- Update timestamp
-- Associated links and tags
-
-Notes support relationships through `NoteLink` value objects and categorization through `Tag` value objects.
+The domain layer of the JodWai Note application is responsible for encapsulating core business logic, entities, value objects, and domain services. This document provides a detailed mapping of these components.
 
 ## Entities
 
 ### Note
+- **Identity:** NoteId (Guid)
+- **Key Attributes:**
+  - Title (string)
+  - Content (string)
+  - CreatedAt (DateTime)
+  - UpdatedAt (DateTime)
+- **Key Behaviors:**
+  - CreateNote()
+  - UpdateNote()
+  - DeleteNote()
+- **Invariants:**
+  - Title must not be empty.
+  - Content must not be null.
 
-**Identity**: Aggregate root, identified by `Id` (`NoteId`).
-
-**Attributes**:
-| Property | Type | Description |
-|---|---|---|
-| `Id` | `NoteId` | Note's unique identifier (GUID) |
-| `Title` | `NoteTitle` | Note heading (max 200 chars) |
-| `Content` | `NoteContent` | Note body (max 10000 chars) |
-| `CreatedAt` | `DateTimeOffset` | When note was created |
-| `UpdatedAt` | `DateTimeOffset` | When note was last modified |
-
-**Behaviors**:
-- `Update(NoteTitle?, NoteContent?)` - Updates title and/or content, requires at least one field to be provided
-- `SyncLinks(List<NoteId>)` - Rebuilds internal links list from database to ensure consistency
-- `AddTag(Tag tag)` - Adds a tag to this note
-- `RemoveTag(Tag tag)` - Removes a tag from this note
-
-**Invariants**:
-- `Id` must be non-empty
-- `Title` must be 1-200 characters and non-empty
-- `Content` must be 0-10000 characters
-- At least one of `Title` or `Content` must change on update
-- Cannot add self-referential links via `NoteLink`
-
-**Key Relationships**:
-- Contains zero or more `NoteLink` instances (targeting other notes)
-- Contains zero or more `Tag` instances
-
-**Private Setters**:
-- `Title` has private setter to prevent external mutation
-- `Content` has private setter to prevent external mutation
-- Updates go through `Update()` method
+### Tag
+- **Identity:** TagId (Guid)
+- **Key Attributes:**
+  - Name (string)
+  - CreatedAt (DateTime)
+  - UpdatedAt (DateTime)
+- **Key Behaviors:**
+  - CreateTag()
+  - UpdateTag()
+  - DeleteTag()
 
 ## Value Objects
 
 ### NoteId
-
-**Fields**:
-| Field | Type | Description |
-|---|---|---|
-| `Value` | `Guid` | The underlying GUID value |
-
-**Invariants**:
-- `Value` must not be empty/default
-
-**Behavior**:
-- Equality based on `Value`
-- Used as primary key for `Note` entity
+- **Fields:** Guid
+- **Validation Rules:** Must be a valid GUID.
+- **Immutability Rules:** Immutable.
 
 ### NoteTitle
-
-**Fields**:
-| Field | Type | Description |
-|---|---|---|
-| `Value` | `string` | The title text |
-
-**Invariants**:
-- `Value` length: 1-200 characters
-- `Value` must not be empty
-- `Value` is trimmed on construction
-- `Value` must contain at least one character
-
-**Behavior**:
-- Equality based on `Value`
-- Throws `ArgumentException` for invalid length
-
-**Factory Methods**:
-- `NoteTitle.From(string value)` - Creates from string, applies trimming and validation
+- **Fields:** string
+- **Validation Rules:** Length > 0, No null or whitespace.
+- **Immutability Rules:** Immutable.
 
 ### NoteContent
+- **Fields:** string
+- **Validation Rules:** Not null.
+- **Immutability Rules:** Immutable.
 
-**Fields**:
-| Field | Type | Description |
-|---|---|---|
-| `Value` | `string` | The content text |
-
-**Invariants**:
-- `Value` length: 0-10000 characters
-- `Value` is trimmed on construction
-- Null is converted to empty string
-
-**Behavior**:
-- Equality based on `Value`
-- Throws `ArgumentException` for length exceeding 10000 characters
-
-**Factory Methods**:
-- `NoteContent.From(string? value)` - Creates from string (nullable), applies trimming
-
-### Tag
-
-**Fields**:
-| Field | Type | Description |
-|---|---|---|
-| `Value` | `string` | The tag text (lowercase) |
-
-**Invariants**:
-- `Value` length: 1-100 characters
-- `Value` must not be empty
-- `Value` is trimmed on construction
-- `Value` is converted to lowercase on construction
-
-**Behavior**:
-- Equality based on `Value` (lowercased)
-- Throws `ArgumentException` for invalid length
-
-**Factory Methods**:
-- `Tag.From(string value)` - Creates from string, applies trimming and lowercasing
+### TagId
+- **Fields:** Guid
+- **Validation Rules:** Must be a valid GUID.
+- **Immutability Rules:** Immutable.
 
 ### NoteLink
-
-**Fields**:
-| Field | Type | Description |
-|---|---|---|
-| `TargetId` | `NoteId` | The ID of the linked note |
-
-**Invariants**:
-- `TargetId` must not be empty
-- `TargetId` cannot be the same as the owning `Note`'s ID (no self-links)
-
-**Behavior**:
-- Equality based on `TargetId`
-- Throws `ArgumentException` for self-reference
-
-**Usage**:
-- Represents a relationship between two notes
-- Stored in `Note` entity's internal list
+- **Fields:** Guid
+- **Validation Rules:** Must be a valid GUID.
+- **Immutability Rules:** Immutable.
 
 ## Aggregates
 
-### Note
+### Note (Aggregate Root)
+- **Owned Objects:**
+  - Tags (List<NoteToTag>)
+- **Consistency Boundary:** Ensures note and its tags are consistent.
 
-**Aggregate Root**: `Note` is the only aggregate in the domain model.
+### Tag
+- **Owned Objects:**
+  - Notes (List<NoteToTag>)
+- **Consistency Boundary:** Ensures tag and its notes are consistent.
 
-**Responsibilities**:
-- Manage its own title and content
-- Maintain its list of links and tags
-- Enforce invariants on title/content length and uniqueness of links
-- Synchronize links against valid note IDs
+## Domain Services
 
-## Relationships Between Domain Objects
+### NoteService
+- **Responsibilities:**
+  - Validates note data before creating, updating, or deleting.
+  - Manages relationships between notes and tags.
 
+### TagService
+- **Responsibilities:**
+  - Validates tag data before creating, updating, or deleting.
+  - Manages relationships between tags and notes.
+
+## Business Rules
+
+1. A note must have a non-empty title.
+2. A note cannot have null content.
+3. Tags must be unique within a note.
+4. Each note-to-tag relationship is unique.
+
+## Relationships Diagram
+
+```mermaid
+erDiagram
+    NOTE ||--o{ TAG : has
+    TAG ||--o{ NOTE : has
 ```
-Note (1) ────────────< NoteLink
-  └─ Contains 0..* TargetNoteIds
 
-Note (1) ────────────< Tag
-  └─ Contains 0..* Tags (lowercase)
-```
+## Ubiquitous Language
 
-## Ubiquitous Language Glossary
-
-| Term | Definition |
-|---|---|
-| Note | The primary business object representing a user's note |
-| NoteId | Value object representing a note's unique identifier |
-| NoteTitle | Value object representing a note's title with validation |
-| NoteContent | Value object representing a note's content with validation |
-| Tag | Value object for categorizing notes (lowercase) |
-| NoteLink | Value object representing a link to another note |
-| Aggregate | A `Note` instance with all its related links and tags |
+- **Note:** Represents a single note with title, content, and associated tags.
+- **Tag:** Represents a tag used to categorize notes.
+- **NoteToTag:** Represents the relationship between a note and a tag.

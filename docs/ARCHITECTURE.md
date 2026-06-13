@@ -1,177 +1,183 @@
-# Architecture
+# System Overview
 
-## System Overview
-
-JodWai Note is a note-taking REST API built with ASP.NET Core Web API. The system manages notes with title, content, tags, and note-to-note relationships (links). Users can create, read, update, and delete notes, organize them with tags, and link related notes together.
+JodWai Note is a note-taking application built using ASP.NET Core Web API. The system allows users to create, read, update, and delete notes while organizing them with tags and linking related notes together.
 
 ## Architectural Style
 
-**Clean Architecture** (also known as Hexagonal Architecture) with the following layers:
+The architecture follows the Clean Architecture pattern, which separates the application into distinct layers:
 
-``` mermaid
-graph TD
-    A["🌐 Presentation\n(JodWai.Api)\nHTTP API Layer"]
-    B["⚙️ Application\n(JodWai.App)\nCQRS Layer"]
-    C["🧠 Domain\n(JodWai.Dom)\nBusiness Rules"]
-    D["🔧 Infrastructure\n(JodWai.Infra)\nEF Core, DB"]
-    E["🐘 PostgreSQL"]
+1. **Presentation Layer (JodWai.Api):** Handles HTTP requests and responses.
+2. **Application Layer (JodWai.App):** Orchestrates business workflows, including command/query handling.
+3. **Domain Layer (JodWai.Dom):** Contains core business logic, entities, value objects, and domain services.
+4. **Infrastructure Layer (JodWai.Infra):** Manages data persistence and external services.
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-```
-Dependency direction flows inward from outer layers to the Domain layer.
+## Component Breakdown
+
+### Domain Layer
+- **Entities:**
+  - `Note`
+  - `Tag`
+
+- **Value Objects:**
+  - `NoteId`
+  - `NoteTitle`
+  - `NoteContent`
+  - `Tag`
+  - `NoteLink`
+
+- **Aggregates:**
+  - `Note`
+
+### Application Layer
+- **Commands:**
+  - `CreateNoteCommand`
+  - `UpdateNoteCommand`
+  - `DeleteNoteCommand`
+  - `CreateTagCommand`
+  - `AddNoteToTagCommand`
+  - `RemoveNoteFromTagCommand`
+
+- **Queries:**
+  - `GetNoteByIdQuery`
+  - `GetAllNotesQuery`
+  - `SearchNotesByTitleQuery`
+  - `GetTagsForNoteQuery`
+
+### Infrastructure Layer
+- **Repositories:**
+  - `INoteRepository`
+  - `ITagRepository`
+
+- **DbContext:**
+  - `AppDbContext`
 
 ## Layer Breakdown
 
-### Presentation Layer (`JodWai.Api`)
+### Presentation Layer (JodWai.Api)
+The presentation layer is responsible for handling HTTP requests and responses. It exposes REST endpoints to interact with the application.
 
-**Responsibility**: HTTP request handling, routing, configuration.
+```mermaid
+graph LR;
+    A[Client] -->|POST /notes| B{Presentation Layer}
+    B --> C[Controllers]
+    C --> D[Application Service]
+    D --> E[Command Handlers]
+    E --> F[Domain Services]
+    F --> G[Repos]
+    G --> H[DbContext]
 
-**Components**:
-- `Controllers/` - HTTP endpoints for notes
-- `Program.cs` - Application entry point, dependency injection
-- `appsettings.json` - Configuration
-
-**Technologies**:
-- ASP.NET Core Web API
-- Scalar for OpenAPI/Swagger documentation
-- Dependency injection
-
-### Application Layer (`JodWai.Application`)
-
-**Responsibility**: Business workflow orchestration, CQRS commands/queries, DTOs.
-
-**Components**:
-- `Commands/` - Write operations (create, update, delete)
-- `Queries/` - Read operations (get all, get by id)
-- `Dtos/` - Data transfer objects for API contracts
-- `Interfaces/` - Abstractions for external collaborators
-- `Mappers/` - Entity-to-DTO mapping
-
-**Technologies**:
-- MediatR for CQRS pattern
-- Repository pattern
-
-### Domain Layer (`JodWai.Domain`)
-
-**Responsibility**: Pure business logic, entities, value objects, domain services. No external dependencies.
-
-**Components**:
-- `Entities/Note.cs` - Main aggregate root
-- `ValueObjects/` - NoteId, NoteTitle, NoteContent, Tag, NoteLink
-- `Interfaces/` - Domain-level interfaces (optional)
-
-**Design Principles**:
-- Immutable value objects with validation
-- Aggregate root manages internal relationships
-- Private setters on critical fields
-- Business invariants enforced at construction
-
-### Infrastructure Layer (`JodWai.Infrastructure`)
-
-**Responsibility**: Data persistence, external services, infrastructure concerns.
-
-**Components**:
-- `Persistence/AppDbContext.cs` - EF Core DbContext
-- `Persistence/Repositories/` - Repository implementations
-- `Migrations/` - Database migration files
-- `Workers/` - Background jobs
-
-**Technologies**:
-- Entity Framework Core 10.0.7
-- PostgreSQL via Npgsql
-- Microsoft.Extensions.Hosting
-
-## Data Flow
-
-### Read Flow (Query)
-
-```
-1. HTTP Request → Controller
-2. Controller → Issue Query via MediatR
-3. Handler → QueryRepository
-4. Repository → Query DbContext
-5. DbContext → Execute SQL
-6. DbContext → Return entities
-7. Mapper → Map to DTO
-8. Return HTTP Response
+    A -->|GET /notes/:id| B
+    B --> C
+    C --> D
+    D --> I[Query Handlers]
+    I --> F
+    F --> G
+    G --> H
 ```
 
-### Write Flow (Command)
+### Application Layer (JodWai.App)
+The application layer orchestrates business workflows, including command/query handling.
 
+```mermaid
+graph LR;
+    A[Controllers] --> B{Application Service}
+    B --> C[Command Handlers]
+    C --> D[Domain Services]
+    D --> E[Repos]
+    E --> F[DbContext]
+
+    A -->|Queries| B
+    B --> I[Query Handlers]
+    I --> D
+    D --> F
+    E --> F
 ```
-1. HTTP Request → Controller
-2. Controller → Issue Command via MediatR
-3. Handler → Repository → DbContext
-4. DbContext → Execute SQL (INSERT/UPDATE/DELETE)
-5. SaveChanges() → Commit transaction
-6. Return Result to Client
+
+### Domain Layer (JodWai.Dom)
+The domain layer contains core business logic, entities, value objects, and domain services.
+
+```mermaid
+graph LR;
+    A[Command Handlers] --> B{Domain Services}
+    B --> C[Repos]
+    C --> D[DbContext]
+
+    A -->|Queries| B
+    B --> E[Query Handlers]
 ```
 
-## Key Components
+### Infrastructure Layer (JodWai.Infra)
+The infrastructure layer manages data persistence and external services.
 
-| Component | Responsibility |
-|-----------|------|
-| `Note` | Aggregate root: title, content, links, tags |
-| `INoteRepository` | Abstraction for note data access |
-| `AppDbContext` | EF Core context for Entity management |
-| `NoteTitle`/`NoteContent`/`Tag` | Value objects with validation |
-| `NoteLink` | Represents note-to-note relationships |
+```mermaid
+graph LR;
+    A[Domain Services] --> B[Repos]
+    B --> C[DbContext]
+
+    A -->|Queries| B
+    B --> D[Query Handlers]
+```
+
+## Request Lifecycle
+
+1. **Create Note:**
+   - Client sends a `POST` request to `/notes`.
+   - The `NotesController` receives the request and invokes the `CreateNoteCommandHandler`.
+   - The handler orchestrates the creation of a new note by invoking domain services.
+   - The domain service saves the note using the repository.
+
+2. **Get Note:**
+   - Client sends a `GET` request to `/notes/:id`.
+   - The `NotesController` receives the request and invokes the `GetNoteByIdQueryHandler`.
+   - The handler retrieves the note from the repository.
+   - The controller returns the retrieved note as a response.
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant NotesController
+    participant CreateNoteCommandHandler
+    participant NoteService
+    participant NoteRepository
+    participant DbContext
+
+    Client->>NotesController: POST /notes (note data)
+    NotesController->>CreateNoteCommandHandler: Handle(note data)
+    CreateNoteCommandHandler->>NoteService: CreateNote(note data)
+    NoteService->>NoteRepository: Add note
+    NoteRepository->>DbContext: SaveChanges()
+```
+
+## Component Diagram
+
+```mermaid
+graph TD;
+    A[Client] -->|POST /notes| B{NotesController}
+    B --> C[CreateNoteCommandHandler]
+    C --> D[NoteService]
+    D --> E[NoteRepository]
+    E --> F[DbContext]
+
+    A -->|GET /notes/:id| B
+    B --> C
+    C --> G[GetNoteByIdQueryHandler]
+    G --> H[NoteService]
+    H --> E
+```
 
 ## External Dependencies
 
-| Dependency | Purpose |
-|-----------|---------|
-| PostgreSQL | Primary data store |
-| Scalar | API documentation (generated) |
-
-## Deployment Model
-
-- **API Server**: ASP.NET Core Web Application
-- **Database**: PostgreSQL instance (container or managed service)
-- **Migration Service**: Separate .NET console app for applying migrations
-- **Host Application**: .NET 10.0 AppHost (if using composite applications)
+- **PostgreSQL:** Used for data persistence.
+- **xUnit + Moq:** For unit testing.
 
 ## Architectural Decisions
 
-### 1. Clean Architecture Over Modular Monolith
+1. **Clean Architecture Pattern:** Adopted to ensure separation of concerns and maintainability.
+2. **Command/Query Separation:** MediatR used to handle commands and queries, maintaining a clean separation between business logic and external services.
 
-**Rationale**: Domain layer remains pure and testable without infrastructure dependencies. Clear boundaries prevent logic leakage.
+## Constraints and Tradeoffs
 
-**Consequence**: Requires mapper layer; slightly more boilerplate but better maintainability.
-
-### 2. Value Objects for All Domain Objects
-
-**Rationale**: Enforce invariants at boundaries. Validation happens once in constructor.
-
-**Consequence**: More code for each entity field, but catches bugs early.
-
-### 3. Repository Pattern
-
-**Rationale**: Abstraction allows swapping implementations (e.g., in-memory for testing).
-
-**Consequence**: Extra indirection, but enables unit testing of application layer.
-
-### 4. MediatR for CQRS
-
-**Rationale**: Separate concerns between read and write paths. Easy to add new operations.
-
-**Consequence**: More files for each operation, but clearer structure.
-
-### 5. PostgreSQL as Database
-
-**Rationale**: Mature ORM support, rich feature set, reliable.
-
-**Consequence**: Vendor lock-in, requires PostgreSQL license (open source for most cases).
-
-## Known Constraints and Tradeoffs
-
-| Constraint | Tradeoff |
-|-----------|---------|
-| Pure domain layer | Requires mappers, more code |
-| Value objects everywhere | More verbosity, but early validation |
-| Repository pattern | Additional abstraction layer |
-| Single DB (PostgreSQL) | Limited to one database type |
-| Scalar for API docs | Requires build step to generate |
+- **No direct database access in domain layer:** Ensures loose coupling but adds complexity in managing transactions.
+- **Complexity in handling note-to-note relationships:** Additional logic required for linking related notes.
