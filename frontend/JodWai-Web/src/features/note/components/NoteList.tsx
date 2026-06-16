@@ -6,10 +6,10 @@ import type {
 } from "../types/note";
 import NoteForm from "./NoteForm";
 import NoteItem from "./NoteItem";
-import { useSearchNotesQuery } from "../queries/useSearchNotesQuery";
 import { useUpdateNoteMutation } from "../queries/useUpdateNoteMutation";
 import { useCreateNoteMutation } from "../queries/useCreateNoteMutation";
 import { useDeleteNoteMutation } from "../queries/useDeleteNoteMutation";
+import { useNotesQuery } from "../queries/useNotesQuery";
 
 export default function NoteList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +19,7 @@ export default function NoteList() {
   const { mutateAsync: createNote } = useCreateNoteMutation();
   const { mutateAsync: updateNote } = useUpdateNoteMutation();
   const { mutateAsync: deleteNote } = useDeleteNoteMutation();
-  const { data: notes = [], isLoading, error } = useSearchNotesQuery("");
+  const { data: notes = [], isLoading, error } = useNotesQuery();
 
   if (isLoading) {
     return <div>Loading...</div>;
