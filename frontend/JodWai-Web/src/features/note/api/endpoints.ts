@@ -1,5 +1,5 @@
 export const endpoints = {
-  notes: "/notes",
+  notes: "/api/notes",
 
-  noteById: (id: string) => `/notes/${id}`,
+  noteById: (id: string) => `/api/notes/${id}`,
 };
