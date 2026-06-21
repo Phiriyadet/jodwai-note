@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace JodWai.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/notes")]
 public sealed class NotesController(ISender sender) : ControllerBase
 {
     private readonly ISender _sender = sender;
