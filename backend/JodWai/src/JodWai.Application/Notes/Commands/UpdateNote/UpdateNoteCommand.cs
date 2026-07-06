@@ -16,12 +16,12 @@ public record UpdateNoteCommand(UpdateNoteRequest Request) : IRequest<Result<Not
 public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Result<NoteDto>>
 {
     private readonly INoteRepository _noteRepository;
-    private readonly INoteLinkParser _parser;
+    private readonly INoteLinkResolver _noteLinkResolver;
 
-    public UpdateNoteCommandHandler(INoteRepository noteRepository, INoteLinkParser parser)
+    public UpdateNoteCommandHandler(INoteRepository noteRepository, INoteLinkResolver resolver)
     {
         _noteRepository = noteRepository;
-        _parser = parser;
+        _noteLinkResolver = resolver;
     }
 
     public async Task<Result<NoteDto>> Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
@@ -38,11 +38,11 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Resul
         var newTitle = request.Request.Title is { Length: > 0 }
             ? NoteTitle.From(request.Request.Title)
             : null;
-        var newContent = request.Request.Content is { Length: > 0 }
-            ? NoteContent.From(request.Request.Content)
+        var newContent = request.Request.Content.GetRawText() is { Length: > 0 }
+            ? NoteContent.From(request.Request.Content.GetRawText())
             : null;
 
-        if(newTitle is null && newContent is null)
+        if (newTitle is null && newContent is null)
         {
             // Nothing to update
             return Result<NoteDto>.Success(note.ToDto());
@@ -66,7 +66,8 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Resul
             title: newTitle,
             content: newContent);
 
-        var linkIds = await _processLinksAsync(newContent, cancellationToken);
+        var linkIds = await _noteLinkResolver
+            .ResolveAsync(note.Content, cancellationToken);
         note.SyncLinks(linkIds);
 
         _noteRepository.Update(note);
@@ -94,45 +95,6 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand, Resul
         await _noteRepository.SaveChangesAsync(cancellationToken);
 
         return Result<NoteDto>.Success(note.ToDto());
-    }
-
-    private async Task<List<NoteId>> _processLinksAsync(
-        NoteContent? content,
-        CancellationToken cancellationToken)
-    {
-        if (content is null)
-        {
-            return [];
-        }
-
-        var parsedLinkTitles = _parser.Parse(content)
-            .Select(link => link.TargetTitle);
-
-        var linkIds = new List<NoteId>();
-
-        foreach (var title in parsedLinkTitles)
-        {
-            var existingId = await _noteRepository
-                .GetIdByTitleAsync(title, cancellationToken);
-
-            if (existingId.HasValue)
-            {
-                linkIds.Add(NoteId.From(existingId.Value));
-            }
-            else
-            {
-                var newBlankNote = Note.Create(
-                    title: NoteTitle.From(title),
-                    content: NoteContent.From(string.Empty));
-
-                var createdNote = await _noteRepository
-                    .CreateAsync(newBlankNote, cancellationToken);
-
-                linkIds.Add(createdNote.Id);
-            }
-        }
-
-        return linkIds;
     }
 
     private NoteContent ReplaceLinkTitlesInContent(

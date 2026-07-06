@@ -69,7 +69,7 @@ public class Note
         _links.RemoveAll(x => x.TargetId == targetId);
     }
 
-    public void SyncLinks(List<NoteId> validIds)
+    public void SyncLinks(IReadOnlyList<NoteId> validIds)
     {
         if (!validIds.Any())
         {

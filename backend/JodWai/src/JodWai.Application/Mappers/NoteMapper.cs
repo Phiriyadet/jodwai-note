@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using JodWai.Application.Notes.Dtos;
 using JodWai.Domain.Entities;
 
@@ -10,9 +12,18 @@ public static class NoteMapper
         return new NoteDto(
             Id: note.Id.Value,
             Title: note.Title.ToString(),
-            Content: note.Content.ToString(),
-            Links: note.Links,
-            Tags: note.Tags,
+            Content: JsonSerializer
+                .Deserialize<JsonElement>(
+                    note.Content.ToString()),
+            Links: note.Links
+                .Select(link =>
+                new NoteLinkDto(
+                    link.TargetId.Value))
+                    .ToList(),
+            Tags: note.Tags
+                .Select(tag => tag
+                .ToString())
+                .ToList(),
             CreatedAt: note.CreatedAt,
             UpdatedAt: note.UpdatedAt
         );

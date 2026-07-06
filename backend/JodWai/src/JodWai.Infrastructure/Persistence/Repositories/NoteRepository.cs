@@ -38,8 +38,7 @@ internal class NoteRepository : INoteRepository
     public async Task<IReadOnlyList<Note>> SearchAsync(string keyword, CancellationToken cancellationToken)
         => await _context.Notes.AsNoTracking()
         .Where(x =>
-            x.Title.Value.Contains(keyword) ||
-            x.Content.Value.Contains(keyword))
+            EF.Functions.ILike(x.Title.Value, $"%{keyword}%"))
         .ToListAsync(cancellationToken);
 
     public void Update(Note note)

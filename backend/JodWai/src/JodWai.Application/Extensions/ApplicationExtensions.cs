@@ -5,6 +5,8 @@ using FluentValidation;
 using MediatR;
 
 using Microsoft.Extensions.DependencyInjection;
+using JodWai.Application.Interfaces;
+using JodWai.Application.Services;
 
 namespace JodWai.Application.Extensions;
 
@@ -28,6 +30,8 @@ public static class ApplicationExtensions
         services.AddTransient(
             typeof(IPipelineBehavior<,>),
             typeof(ValidationBehavior<,>));
+
+        services.AddScoped<INoteLinkResolver, NoteLinkResolver>();
 
         return services;
     }
