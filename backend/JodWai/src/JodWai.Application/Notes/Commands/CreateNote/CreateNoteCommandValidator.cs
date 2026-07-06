@@ -13,7 +13,7 @@ public sealed class CreateNoteCommandValidator : AbstractValidator<CreateNoteCom
             .WithMessage("Title is required.")
             .MaximumLength(NoteTitle.MaxLength)
             .WithMessage($"Title must not exceed {NoteTitle.MaxLength} characters.");
-        RuleFor(x => x.Request.Content)
+        RuleFor(x => x.Request.Content.GetRawText())
             .MaximumLength(NoteContent.MaxLength)
             .WithMessage($"Content must not exceed {NoteContent.MaxLength} characters.");
     }
