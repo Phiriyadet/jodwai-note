@@ -27,7 +27,7 @@ public class DeleteNoteCommandTests
 
         var note = Note.Create(
             NoteTitle.From(NoteTestConstants.ValidNoteTitle),
-            NoteContent.From(NoteTestConstants.ValidNoteContent));
+            NoteContent.From(NoteTestConstants.ValidNoteContent.GetRawText()));
 
         _mockRepository.Setup(r => r.GetByIdAsync(It.IsAny<NoteId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(note);
