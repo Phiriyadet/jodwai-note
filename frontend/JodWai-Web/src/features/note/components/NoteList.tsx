@@ -32,6 +32,8 @@ export default function NoteList() {
   const handleCreateNote = async (note: CreateNoteRequest) => {
     const newNote = await createNote(note);
     console.log("New note created:", newNote);
+    console.log(newNote.content);
+    console.log(typeof newNote.content);
 
     handleCloseModal();
   };
