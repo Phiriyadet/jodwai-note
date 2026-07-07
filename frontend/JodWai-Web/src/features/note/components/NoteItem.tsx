@@ -1,3 +1,4 @@
+import type { JSONContent } from "@tiptap/react";
 import type { NoteDto } from "../types/note";
 
 type NoteItemProps = {
@@ -11,11 +12,20 @@ export default function NoteItem({
   onEdit,
   onDelete,
 }: Readonly<NoteItemProps>) {
-  const getSnippet = (html: string) => {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
-    const text = tempDiv.textContent || tempDiv.innerText || "";
-    return text.length > 120 ? text.substring(0, 120) + "..." : text;
+  const getSnippet = (content: JSONContent): string => {
+    const extractText = (node?: JSONContent): string => {
+      if (!node) return "";
+
+      if (typeof node.text === "string") {
+        return node.text;
+      }
+
+      return (node.content ?? []).map(extractText).join("");
+    };
+
+    const text = extractText(content);
+
+    return text.length > 120 ? `${text.slice(0, 120)}...` : text;
   };
 
   return (

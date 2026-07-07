@@ -1,5 +1,6 @@
 using JodWai.Application.Common.Results;
 using JodWai.Application.Common.Results.Errors;
+using JodWai.Application.Extensions;
 using JodWai.Application.Interfaces;
 using JodWai.Application.Mappers;
 using JodWai.Application.Notes.Dtos;
@@ -16,19 +17,20 @@ public record CreateNoteCommand(CreateNoteRequest Request) : IRequest<Result<Not
 public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Result<NoteDto>>
 {
     private readonly INoteRepository _noteRepository;
-    private readonly INoteLinkParser _parser;
+    private readonly INoteLinkResolver _noteLinkResolver;
 
-    public CreateNoteCommandHandler(INoteRepository noteRepository, INoteLinkParser parser)
+    public CreateNoteCommandHandler(INoteRepository noteRepository, INoteLinkResolver resolver)
+
     {
         _noteRepository = noteRepository;
-        _parser = parser;
+        _noteLinkResolver = resolver;
     }
 
     public async Task<Result<NoteDto>> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
     {
         // 1. Prepare the new note
         var title = NoteTitle.From(request.Request.Title);
-        var content = NoteContent.From(request.Request.Content);
+        var content = NoteContent.From(request.Request.Content.ToNoteContentJson());
 
         var existingTitle = await _noteRepository.GetIdByTitleAsync(title.Value, cancellationToken);
 
@@ -43,7 +45,8 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Resul
             content: content);
 
         // 2. Process links (create missing notes or find existing ones)
-        var linkIds = await _processLinksAsync(content, cancellationToken);
+        var linkIds = await _noteLinkResolver
+            .ResolveAsync(note.Content, cancellationToken);
 
         // 3. Attach link IDs to the note
         note.SyncLinks(linkIds);
@@ -53,38 +56,5 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Resul
         await _noteRepository.SaveChangesAsync(cancellationToken);
 
         return Result<NoteDto>.Success(createdNote.ToDto());
-    }
-
-    private async Task<List<NoteId>> _processLinksAsync(NoteContent content, CancellationToken cancellationToken)
-    {
-        // Parse links from content
-        var parsedLinkTitles = _parser.Parse(content)
-            .Select(link => link.TargetTitle);
-
-        var linkIds = new List<NoteId>();
-
-        foreach (var title in parsedLinkTitles)
-        {
-            // Try to find existing note by title
-            var existingId = await _noteRepository.GetIdByTitleAsync(title, cancellationToken);
-
-            if (existingId.HasValue)
-            {
-                // Link exists: Add ID
-                linkIds.Add(NoteId.From(existingId.Value));
-            }
-            else
-            {
-                // Link missing: Create a new blank note with the same title
-                var newBlankNote = Note.Create(
-                    title: NoteTitle.From(title),
-                    content: NoteContent.From("")); // Reuse or create a blank content
-
-                var createdId = await _noteRepository.CreateAsync(newBlankNote, cancellationToken);
-                linkIds.Add(createdId.Id);
-            }
-        }
-
-        return linkIds;
     }
 }

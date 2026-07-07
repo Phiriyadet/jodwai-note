@@ -1,10 +1,11 @@
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
-import type {
-  CreateNoteRequest,
-  NoteDto,
-  UpdateNoteRequest,
+import {
+  EMPTY_DOC,
+  type CreateNoteRequest,
+  type NoteDto,
+  type UpdateNoteRequest,
 } from "../types/note";
 
 interface NoteFormProps {
@@ -12,6 +13,14 @@ interface NoteFormProps {
   onCreate: (request: CreateNoteRequest) => Promise<void>;
   onUpdate: (request: UpdateNoteRequest) => Promise<void>;
   onClose: () => void;
+}
+
+function normalizeContent(content: JSONContent): JSONContent {
+  const isEmpty =
+    content.type === "doc" &&
+    (!content.content || content.content.length === 0);
+
+  return isEmpty ? EMPTY_DOC : content;
 }
 
 export default function NoteForm({
@@ -33,12 +42,6 @@ export default function NoteForm({
     },
   });
 
-  // useEffect(() => {
-  //   if (editor && note) {
-  //     editor.commands.setContent(note.content);
-  //   }
-  // }, [editor, note?.content]);
-
   const handleSave = async () => {
     if (!editor) {
       return;
@@ -49,7 +52,7 @@ export default function NoteForm({
       return;
     }
 
-    const content = editor.getHTML();
+    const content = normalizeContent(editor.getJSON());
 
     if (note) {
       await onUpdate({

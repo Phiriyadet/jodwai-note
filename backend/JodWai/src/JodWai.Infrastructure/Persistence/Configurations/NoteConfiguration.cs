@@ -34,6 +34,7 @@ internal class NoteConfiguration : IEntityTypeConfiguration<Note>
         {
             content.Property(c => c.Value)
                 .HasColumnName("Content")
+                .HasColumnType("jsonb")
                 .HasMaxLength(NoteContent.MaxLength)
                 .IsRequired();
         });

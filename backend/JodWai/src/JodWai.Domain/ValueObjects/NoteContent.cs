@@ -2,6 +2,8 @@ namespace JodWai.Domain.ValueObjects;
 
 public sealed record NoteContent
 {
+    const string EmptyContent =
+    """{"type":"doc","content":[{"type":"paragraph"}]}""";
     public const int MaxLength = 10000;
     public string Value { get; }
 
@@ -10,9 +12,13 @@ public sealed record NoteContent
         Value = value;
     }
 
-    public static NoteContent From(string value)
+    public static NoteContent Empty => new(EmptyContent);
+
+    public static NoteContent From(string? value)
     {
-        string settledValue = (value ?? string.Empty).Trim();
+        var settledValue = string.IsNullOrWhiteSpace(value)
+            ? EmptyContent
+            : value.Trim();
 
         if (settledValue.Length > MaxLength)
         {
