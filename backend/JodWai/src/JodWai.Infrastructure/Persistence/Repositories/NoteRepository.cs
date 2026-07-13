@@ -2,7 +2,6 @@ using JodWai.Application.Common.Enums;
 using JodWai.Application.Common.Pagination;
 using JodWai.Application.Interfaces;
 using JodWai.Application.Notes.Dtos.Enums;
-using JodWai.Application.Notes.Dtos.Requests;
 using JodWai.Domain.Entities;
 using JodWai.Domain.ValueObjects;
 
