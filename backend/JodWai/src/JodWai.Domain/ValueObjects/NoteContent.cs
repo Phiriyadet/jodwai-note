@@ -3,7 +3,22 @@ namespace JodWai.Domain.ValueObjects;
 public sealed record NoteContent
 {
     const string EmptyContent =
-    """{"type":"doc","content":[{"type":"paragraph"}]}""";
+    """
+    {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ]
+        }
+      ]
+    }
+    """;
     public const int MaxLength = 10000;
     public string Value { get; }
 
