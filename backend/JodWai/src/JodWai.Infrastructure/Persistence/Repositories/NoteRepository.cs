@@ -1,4 +1,7 @@
+using JodWai.Application.Common.Enums;
+using JodWai.Application.Common.Pagination;
 using JodWai.Application.Interfaces;
+using JodWai.Application.Notes.Dtos.Enums;
 using JodWai.Domain.Entities;
 using JodWai.Domain.ValueObjects;
 
@@ -14,10 +17,6 @@ internal class NoteRepository : INoteRepository
     public async Task<Note> CreateAsync(Note note, CancellationToken cancellationToken = default)
         => (await _context.Notes
         .AddAsync(note, cancellationToken)).Entity;
-
-    public async Task<IReadOnlyList<Note>> GetAllAsync(CancellationToken cancellationToken = default)
-        => await _context.Notes.AsNoTracking()
-        .ToListAsync(cancellationToken);
 
     public async Task<Note?> GetByIdAsync(NoteId id, CancellationToken cancellationToken = default)
         => await _context.Notes
@@ -35,11 +34,67 @@ internal class NoteRepository : INoteRepository
         .Any(l => l.TargetId == noteId))
         .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Note>> SearchAsync(string keyword, CancellationToken cancellationToken)
-        => await _context.Notes.AsNoTracking()
-        .Where(x =>
-            EF.Functions.ILike(x.Title.Value, $"%{keyword}%"))
-        .ToListAsync(cancellationToken);
+    public async Task<PagedResult<Note>> GetPagedAsync(
+    GetNotesOptions options,
+    CancellationToken cancellationToken = default)
+    {
+        IQueryable<Note> query = _context.Notes;
+
+        // Search
+        if (!string.IsNullOrWhiteSpace(options.Search))
+        {
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Title.Value, $"%{options.Search}%"));
+        }
+
+        // Created date filter
+        if (options.CreatedAfter is not null)
+        {
+            query = query.Where(x =>
+                x.CreatedAt >= options.CreatedAfter.Value);
+        }
+
+        if (options.CreatedBefore is not null)
+        {
+            query = query.Where(x =>
+                x.CreatedAt <= options.CreatedBefore.Value);
+        }
+
+        // Sorting
+        query = (options.SortBy, options.SortOrder) switch
+        {
+            (NoteSortBy.Title, SortOrder.Asc) =>
+                query.OrderBy(x => x.Title.Value),
+
+            (NoteSortBy.Title, SortOrder.Desc) =>
+                query.OrderByDescending(x => x.Title.Value),
+
+            (NoteSortBy.CreatedAt, SortOrder.Asc) =>
+                query.OrderBy(x => x.CreatedAt),
+
+            (NoteSortBy.CreatedAt, SortOrder.Desc) =>
+                query.OrderByDescending(x => x.CreatedAt),
+
+            (NoteSortBy.UpdatedAt, SortOrder.Asc) =>
+                query.OrderBy(x => x.UpdatedAt),
+
+            _ =>
+                query.OrderByDescending(x => x.UpdatedAt)
+        };
+
+        var totalItems = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((options.Page - 1) * options.PageSize)
+            .Take(options.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<Note>(
+            Items: items,
+            Page: options.Page,
+            PageSize: options.PageSize,
+            TotalItems: totalItems);
+    }
 
     public void Update(Note note)
         => _context.Notes.Update(note);

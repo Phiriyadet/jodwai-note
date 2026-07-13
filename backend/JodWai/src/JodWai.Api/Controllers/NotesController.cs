@@ -4,7 +4,8 @@ using JodWai.Application.Notes.Commands.DeleteNote;
 using JodWai.Application.Notes.Commands.UpdateNote;
 using JodWai.Application.Notes.Dtos;
 using JodWai.Application.Notes.Dtos.Requests;
-using JodWai.Application.Notes.Queries;
+using JodWai.Application.Notes.Queries.GetNoteById;
+using JodWai.Application.Notes.Queries.GetNotes;
 
 using MediatR;
 
@@ -21,23 +22,15 @@ public sealed class NotesController(ISender sender) : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<NoteDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(
-     [FromQuery] string? keyword,
-     CancellationToken cancellationToken)
+        [FromQuery] GetNotesRequest request,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(keyword))
-        {
-            var notes = await _sender.Send(
-                new GetAllNotesQuery(),
-                cancellationToken);
 
-            return Ok(notes);
-        }
-
-        var searchResult = await _sender.Send(
-            new SearchNotesQuery(keyword),
+        var notes = await _sender.Send(
+            new GetNotesQuery(request),
             cancellationToken);
 
-        return Ok(searchResult);
+        return Ok(notes.Value);
     }
 
     [HttpGet("{id:guid}")]
@@ -54,7 +47,7 @@ public sealed class NotesController(ISender sender) : ControllerBase
             return NotFound();
         }
 
-        return Ok(note);
+        return Ok(note.Value);
     }
 
     [HttpPost]
