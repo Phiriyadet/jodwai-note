@@ -1,3 +1,5 @@
+using JodWai.Application.Common.Pagination;
+using JodWai.Application.Notes.Dtos.Requests;
 using JodWai.Domain.Entities;
 using JodWai.Domain.ValueObjects;
 
@@ -9,10 +11,9 @@ public interface INoteRepository
     Task<Note?> GetByIdAsync(NoteId id, CancellationToken cancellationToken = default);
     Task<Guid?> GetIdByTitleAsync(string title, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Note>> GetNotesReferencingAsync(NoteId noteId, CancellationToken cancellationToken);
-    Task<IReadOnlyList<Note>> GetAllAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Note>> SearchAsync(
-    string keyword,
-    CancellationToken cancellationToken);
+    Task<PagedResult<Note>> GetPagedAsync(
+        GetNotesOptions options,
+        CancellationToken cancellationToken = default);
     void Update(Note note);
     void Delete(Note note);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
