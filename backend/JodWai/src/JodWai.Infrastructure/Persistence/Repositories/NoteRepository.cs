@@ -18,10 +18,6 @@ internal class NoteRepository : INoteRepository
         => (await _context.Notes
         .AddAsync(note, cancellationToken)).Entity;
 
-    public async Task<IReadOnlyList<Note>> GetAllAsync(CancellationToken cancellationToken = default)
-        => await _context.Notes.AsNoTracking()
-        .ToListAsync(cancellationToken);
-
     public async Task<Note?> GetByIdAsync(NoteId id, CancellationToken cancellationToken = default)
         => await _context.Notes
         .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
