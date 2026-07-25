@@ -40,6 +40,23 @@ internal class NoteRepository : INoteRepository
     {
         IQueryable<Note> query = _context.Notes;
 
+        DateTimeOffset? createdAfter = null;
+        DateTimeOffset? createdBefore = null;
+
+        if (options.CreatedAfter is not null)
+        {
+            createdAfter = new DateTimeOffset(
+                options.CreatedAfter.Value.ToDateTime(TimeOnly.MinValue),
+                TimeSpan.Zero);
+        }
+
+        if (options.CreatedBefore is not null)
+        {
+            createdBefore = new DateTimeOffset(
+                options.CreatedBefore.Value.ToDateTime(TimeOnly.MaxValue),
+                TimeSpan.Zero);
+        }
+
         // Search
         if (!string.IsNullOrWhiteSpace(options.Search))
         {
@@ -48,16 +65,16 @@ internal class NoteRepository : INoteRepository
         }
 
         // Created date filter
-        if (options.CreatedAfter is not null)
+        if (createdAfter is not null)
         {
             query = query.Where(x =>
-                x.CreatedAt >= options.CreatedAfter.Value);
+                x.CreatedAt >= createdAfter.Value);
         }
 
-        if (options.CreatedBefore is not null)
+        if (createdBefore is not null)
         {
             query = query.Where(x =>
-                x.CreatedAt <= options.CreatedBefore.Value);
+                x.CreatedAt <= createdBefore.Value);
         }
 
         // Sorting
