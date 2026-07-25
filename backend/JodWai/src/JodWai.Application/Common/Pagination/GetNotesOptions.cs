@@ -7,7 +7,7 @@ public sealed record GetNotesOptions(
     int Page,
     int PageSize,
     string? Search,
-    DateTime? CreatedAfter,
-    DateTime? CreatedBefore,
+    DateOnly? CreatedAfter,
+    DateOnly? CreatedBefore,
     NoteSortBy SortBy,
     SortOrder SortOrder);
