@@ -11,8 +11,8 @@ public sealed record GetNotesRequest
     string? Search = null,
     string? Tag = null,
 
-    DateTime? CreatedAfter = null,
-    DateTime? CreatedBefore = null,
+    DateOnly? CreatedAfter = null,
+    DateOnly? CreatedBefore = null,
 
     NoteSortBy SortBy = NoteSortBy.UpdatedAt,
     SortOrder SortOrder = SortOrder.Desc
