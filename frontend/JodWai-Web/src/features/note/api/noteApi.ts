@@ -1,24 +1,23 @@
 import { httpClient } from "../../../lib/httpClient";
 import type {
   CreateNoteRequest,
+  GetNotesRequest,
   NoteDto,
+  PagedResponse,
   UpdateNoteRequest,
 } from "../types/note";
 import { endpoints } from "./endpoints";
 
 export const noteApi = {
-  getAll: async (): Promise<NoteDto[]> => {
-    const response = await httpClient.get<NoteDto[]>(endpoints.notes);
-
-    return response.data;
-  },
-
-  search: async (keyword: string): Promise<NoteDto[]> => {
-    const response = await httpClient.get<NoteDto[]>(endpoints.notes, {
-      params: {
-        keyword,
+  getNotes: async (
+    request: GetNotesRequest,
+  ): Promise<PagedResponse<NoteDto>> => {
+    const response = await httpClient.get<PagedResponse<NoteDto>>(
+      endpoints.notes,
+      {
+        params: request,
       },
-    });
+    );
 
     return response.data;
   },
