@@ -10,16 +10,54 @@ import { useUpdateNoteMutation } from "../queries/useUpdateNoteMutation";
 import { useCreateNoteMutation } from "../queries/useCreateNoteMutation";
 import { useDeleteNoteMutation } from "../queries/useDeleteNoteMutation";
 import { useNotesQuery } from "../queries/useNotesQuery";
+import { SearchFilterBar } from "./SearchFilterBar/SearchFilterBar";
 
 export default function NoteList() {
+  // ==============================
+  // State
+  // ==============================
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentNote, setCurrentNote] = useState<NoteDto | undefined>(
-    undefined,
-  );
+  const [currentNote, setCurrentNote] = useState<NoteDto>();
+
+  const [page, setPage] = useState(1);
+
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+
+  // ==============================
+  // Query Parameters
+  // ==============================
+  const pageSize = 20;
+  const request = {
+    page,
+    pageSize,
+    search,
+  };
+
+  // ==============================
+  // Mutations
+  // ==============================
+
   const { mutateAsync: createNote } = useCreateNoteMutation();
   const { mutateAsync: updateNote } = useUpdateNoteMutation();
   const { mutateAsync: deleteNote } = useDeleteNoteMutation();
-  const { data: notes = [], isLoading, error } = useNotesQuery();
+
+  // ==============================
+  // Queries
+  // ==============================
+
+  const { data, isLoading, error } = useNotesQuery(request);
+
+  // ==============================
+  // Derived State
+  // ==============================
+
+  const notes = data?.items ?? [];
+
+  // ==============================
+  // Early Return
+  // ==============================
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -29,17 +67,36 @@ export default function NoteList() {
     return <div>Failed to load notes</div>;
   }
 
+  // ==============================
+  // Search Handlers
+  // ==============================
+
+  function handleSearch() {
+    setPage(1);
+    setSearch(input.trim());
+  }
+
+  function handleClear() {
+    setInput("");
+    setSearch("");
+    setPage(1);
+  }
+
+  // ==============================
+  // CRUD Handlers
+  // ==============================
+
   const handleCreateNote = async (note: CreateNoteRequest) => {
     const newNote = await createNote(note);
+
     console.log("New note created:", newNote);
-    console.log(newNote.content);
-    console.log(typeof newNote.content);
 
     handleCloseModal();
   };
 
   const handleUpdateNote = async (note: UpdateNoteRequest) => {
     const updatedNote = await updateNote(note);
+
     console.log("Note updated:", updatedNote);
 
     handleCloseModal();
@@ -52,6 +109,10 @@ export default function NoteList() {
 
     await deleteNote(id);
   };
+
+  // ==============================
+  // Modal Handlers
+  // ==============================
 
   const handleOpenAddModal = () => {
     setCurrentNote(undefined);
@@ -79,6 +140,12 @@ export default function NoteList() {
             <p className="text-sm text-gray-500 mt-1">
               All notes are safely stored in your local browser storage.
             </p>
+            <SearchFilterBar
+              value={input}
+              onChange={setInput}
+              onSearch={handleSearch}
+              onClear={handleClear}
+            />
           </div>
           <button
             onClick={handleOpenAddModal}
