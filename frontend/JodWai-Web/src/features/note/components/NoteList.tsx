@@ -1,8 +1,12 @@
-import { useState } from "react";
-import type {
-  CreateNoteRequest,
-  NoteDto,
-  UpdateNoteRequest,
+import { useEffect, useState } from "react";
+import {
+  NoteSortBy,
+  NoteSortOrder,
+  type CreateNoteRequest,
+  type NoteDto,
+  type SortBy,
+  type SortOrder,
+  type UpdateNoteRequest,
 } from "../types/note";
 import NoteForm from "./NoteForm";
 import NoteItem from "./NoteItem";
@@ -10,16 +14,111 @@ import { useUpdateNoteMutation } from "../queries/useUpdateNoteMutation";
 import { useCreateNoteMutation } from "../queries/useCreateNoteMutation";
 import { useDeleteNoteMutation } from "../queries/useDeleteNoteMutation";
 import { useNotesQuery } from "../queries/useNotesQuery";
+import { SearchFilterBar } from "./SearchFilterBar/SearchFilterBar";
+import Pagination from "./Pagination";
+import {
+  buildNoteQueryString,
+  parseNoteQueryParams,
+} from "./hooks/useNotesQueryParams";
 
 export default function NoteList() {
+  // ==============================
+  // State
+  // ==============================
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentNote, setCurrentNote] = useState<NoteDto | undefined>(
-    undefined,
+  const [currentNote, setCurrentNote] = useState<NoteDto>();
+
+  const [initialParams] = useState(() =>
+    parseNoteQueryParams(window.location.search),
   );
+
+  const [page, setPage] = useState(initialParams.page);
+  const [pageSize, setPageSize] = useState(initialParams.pageSize);
+
+  // Draft (ใน Form) — init ให้ตรงกับ applied เพื่อไม่ให้ Form ว่างเปล่าตอน refresh
+  const [input, setInput] = useState(initialParams.search);
+  const [filterCreatedAfter, setFilterCreatedAfter] = useState(
+    initialParams.createdAfter,
+  );
+  const [filterCreatedBefore, setFilterCreatedBefore] = useState(
+    initialParams.createdBefore,
+  );
+  const [filterSortBy, setFilterSortBy] = useState<SortBy>(
+    initialParams.sortBy,
+  );
+  const [filterSortOrder, setFilterSortOrder] = useState<SortOrder>(
+    initialParams.sortOrder,
+  );
+
+  // Applied (ใช้ Query)
+  const [search, setSearch] = useState(initialParams.search);
+  const [createdAfter, setCreatedAfter] = useState(initialParams.createdAfter);
+  const [createdBefore, setCreatedBefore] = useState(
+    initialParams.createdBefore,
+  );
+  const [sortBy, setSortBy] = useState<SortBy>(initialParams.sortBy);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(
+    initialParams.sortOrder,
+  );
+
+  // ==============================
+  // Query Parameters
+  // ==============================
+  const request = {
+    page,
+    pageSize,
+    search,
+    createdAfter,
+    createdBefore,
+    sortBy,
+    sortOrder,
+  };
+
+  // ==============================
+  // Mutations
+  // ==============================
+
   const { mutateAsync: createNote } = useCreateNoteMutation();
   const { mutateAsync: updateNote } = useUpdateNoteMutation();
   const { mutateAsync: deleteNote } = useDeleteNoteMutation();
-  const { data: notes = [], isLoading, error } = useNotesQuery();
+
+  // ==============================
+  // Queries
+  // ==============================
+
+  const { data, isLoading, error } = useNotesQuery(request);
+
+  // ==============================
+  // Sync State -> URL
+  // ==============================
+  useEffect(() => {
+    const queryString = buildNoteQueryString({
+      search,
+      createdAfter,
+      createdBefore,
+      sortBy,
+      sortOrder,
+      page,
+      pageSize,
+    });
+
+    const newUrl = queryString
+      ? `${window.location.pathname}?${queryString}`
+      : window.location.pathname;
+
+    window.history.replaceState(null, "", newUrl);
+  }, [search, createdAfter, createdBefore, sortBy, sortOrder, page, pageSize]);
+
+  // ==============================
+  // Derived State
+  // ==============================
+
+  const notes = data?.items ?? [];
+
+  // ==============================
+  // Early Return
+  // ==============================
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -29,17 +128,62 @@ export default function NoteList() {
     return <div>Failed to load notes</div>;
   }
 
+  // ==============================
+  // Search Handlers
+  // ==============================
+
+  function handleSearch() {
+    setPage(1);
+    setSearch(input.trim());
+  }
+
+  function handleClear() {
+    setInput("");
+    setSearch("");
+    setPage(1);
+  }
+
+  function handleApplyFilter() {
+    setCreatedAfter(filterCreatedAfter);
+    setCreatedBefore(filterCreatedBefore);
+
+    setSortBy(filterSortBy);
+    setSortOrder(filterSortOrder);
+
+    setPage(1);
+  }
+
+  function handleResetFilter() {
+    // Reset UI
+    setFilterCreatedAfter("");
+    setFilterCreatedBefore("");
+    setFilterSortBy(NoteSortBy.UpdatedAt);
+    setFilterSortOrder(NoteSortOrder.Desc);
+
+    // Reset Query
+    setCreatedAfter("");
+    setCreatedBefore("");
+    setSortBy(NoteSortBy.UpdatedAt);
+    setSortOrder(NoteSortOrder.Desc);
+
+    setPage(1);
+  }
+
+  // ==============================
+  // CRUD Handlers
+  // ==============================
+
   const handleCreateNote = async (note: CreateNoteRequest) => {
     const newNote = await createNote(note);
+
     console.log("New note created:", newNote);
-    console.log(newNote.content);
-    console.log(typeof newNote.content);
 
     handleCloseModal();
   };
 
   const handleUpdateNote = async (note: UpdateNoteRequest) => {
     const updatedNote = await updateNote(note);
+
     console.log("Note updated:", updatedNote);
 
     handleCloseModal();
@@ -52,6 +196,10 @@ export default function NoteList() {
 
     await deleteNote(id);
   };
+
+  // ==============================
+  // Modal Handlers
+  // ==============================
 
   const handleOpenAddModal = () => {
     setCurrentNote(undefined);
@@ -79,6 +227,25 @@ export default function NoteList() {
             <p className="text-sm text-gray-500 mt-1">
               All notes are safely stored in your local browser storage.
             </p>
+            <SearchFilterBar
+              // Search
+              value={input}
+              onChange={setInput}
+              onSearch={handleSearch}
+              onClear={handleClear}
+              // Filter
+              filterCreatedAfter={filterCreatedAfter}
+              filterCreatedBefore={filterCreatedBefore}
+              setFilterCreatedAfter={setFilterCreatedAfter}
+              setFilterCreatedBefore={setFilterCreatedBefore}
+              handleApplyFilter={handleApplyFilter}
+              handleResetFilter={handleResetFilter}
+              // Sort
+              filterSortBy={filterSortBy}
+              filterSortOrder={filterSortOrder}
+              setFilterSortBy={setFilterSortBy}
+              setFilterSortOrder={setFilterSortOrder}
+            />
           </div>
           <button
             onClick={handleOpenAddModal}
@@ -121,6 +288,17 @@ export default function NoteList() {
           />
         )}
       </div>
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        totalPages={data?.totalPages ?? 1}
+        totalCount={data?.totalItems ?? 0}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }
