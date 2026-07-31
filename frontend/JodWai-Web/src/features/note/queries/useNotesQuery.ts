@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { noteKeys } from "./noteKeys";
 import { noteApi } from "../api/noteApi";
+import type { GetNotesRequest } from "../types/note";
+import { noteKeys } from "./noteKeys";
 
-export function useNotesQuery() {
+export function useNotesQuery(request: GetNotesRequest) {
   return useQuery({
-    queryKey: noteKeys.all,
-    queryFn: noteApi.getAll,
+    queryKey: noteKeys.list(request),
+    queryFn: () => noteApi.getNotes(request),
   });
 }
