@@ -1,10 +1,24 @@
 import { SearchInput } from "./SearchInput";
+import { FilterSection } from "./FilterSection";
+import type { SortBy, SortOrder } from "../../types/note";
+import { SortSection } from "./SortSection";
 
 type SearchFilterBarProps = {
   value: string;
   onChange: (value: string) => void;
   onSearch: () => void;
   onClear: () => void;
+
+  filterCreatedAfter: string;
+  filterCreatedBefore: string;
+  setFilterCreatedAfter: (value: string) => void;
+  setFilterCreatedBefore: (value: string) => void;
+  handleApplyFilter: () => void;
+  handleResetFilter: () => void;
+  filterSortBy: SortBy;
+  filterSortOrder: SortOrder;
+  setFilterSortBy: (value: SortBy) => void;
+  setFilterSortOrder: (value: SortOrder) => void;
 };
 
 export function SearchFilterBar({
@@ -12,17 +26,23 @@ export function SearchFilterBar({
   onChange,
   onSearch,
   onClear,
+  filterCreatedAfter,
+  filterCreatedBefore,
+  setFilterCreatedAfter,
+  setFilterCreatedBefore,
+  handleApplyFilter,
+  handleResetFilter,
+  filterSortBy,
+  filterSortOrder,
+  setFilterSortBy,
+  setFilterSortOrder,
 }: SearchFilterBarProps) {
   return (
     <div
       className="
-        flex flex-col gap-3
+        flex flex-col gap-4
         rounded-xl border border-gray-200
-        bg-white
-        p-4
-        shadow-sm
-        md:flex-row
-        md:items-center
+        bg-white p-4 shadow-sm
       "
     >
       <SearchInput
@@ -32,10 +52,21 @@ export function SearchFilterBar({
         onClear={onClear}
       />
 
-      {/* Future Filter Section */}
-      {/*
-      <FilterButton />
-      */}
+      <FilterSection
+        createdAfter={filterCreatedAfter}
+        createdBefore={filterCreatedBefore}
+        onCreatedAfterChange={setFilterCreatedAfter}
+        onCreatedBeforeChange={setFilterCreatedBefore}
+        onApply={handleApplyFilter}
+        onReset={handleResetFilter}
+      />
+
+      <SortSection
+        sortBy={filterSortBy}
+        sortOrder={filterSortOrder}
+        onSortByChange={setFilterSortBy}
+        onSortOrderChange={setFilterSortOrder}
+      />
     </div>
   );
 }
