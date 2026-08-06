@@ -9,3 +9,11 @@ export function useNotesQuery(request: GetNotesRequest) {
     queryFn: () => noteApi.getNotes(request),
   });
 }
+
+export function useAllNotesQuery() {
+  return useQuery({
+    queryKey: noteKeys.graph(),
+    queryFn: noteApi.getAllNotes,
+    staleTime: 30_000,
+  });
+}

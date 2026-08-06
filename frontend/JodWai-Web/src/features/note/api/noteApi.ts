@@ -8,7 +8,22 @@ import type {
 } from "../types/note";
 import { endpoints } from "./endpoints";
 
+const MAX_PAGE_SIZE = 100; 
+
 export const noteApi = {
+
+  // noteApi.ts
+  getAllNotes: async (): Promise<NoteDto[]> => {
+    const response = await httpClient.get<PagedResponse<NoteDto>>(
+      endpoints.notes,
+      {
+        params: { page: 1, pageSize: MAX_PAGE_SIZE },
+      },
+    );
+  
+    return response.data.items;
+  },
+  
   getNotes: async (
     request: GetNotesRequest,
   ): Promise<PagedResponse<NoteDto>> => {
