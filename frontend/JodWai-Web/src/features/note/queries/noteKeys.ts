@@ -32,4 +32,13 @@ export const noteKeys = {
    */
   list: (request: GetNotesRequest) =>
     [...noteKeys.all, request] as const,
+
+  /**
+   * Cache key for the full, unpaginated note collection.
+   * Used for views that need every note at once, e.g. the note graph.
+   *
+   * Example:
+   * ["notes", "graph"]
+   */
+  graph: () => [...noteKeys.all, "graph"] as const,
 };
