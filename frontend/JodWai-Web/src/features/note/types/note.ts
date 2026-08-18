@@ -17,7 +17,7 @@ export interface UpdateNoteRequest {
 }
 
 export interface NoteLinkDto {
-  targetId: string;
+  id: string;
 }
 
 export const NoteSortBy = {
